@@ -7,16 +7,17 @@
 ### 인 게임 플레이
 
 ### 전투 시스템
-![bandicam 2025-12-14 21-58-13-948](https://github.com/user-attachments/assets/61f22610-9bdf-4432-9556-48301200a7ce)
+![bandicam 2025-12-14 21-58-13-948](https://github.com/user-attachments/assets/6d7ee84f-4018-4288-8023-b7dcdfd99186)
 - 공격에 피격될 때 마다 HP가 1씩 줄어듭니다. 체력 게이지를 통해 실시간으로 생존 상태를 확인할 수 있습니다.
 - 좀비들은 플레이어와 마주치면 따라갑니다.
 
 ### 코인 수집
-![bandicam 2025-12-14 21-58-13-948 (1)](https://github.com/user-attachments/assets/828c435a-def8-4c10-a1f7-235519a01deb)
+![bandicam 2025-12-14 21-58-13-948 (1)](https://github.com/user-attachments/assets/0637a540-b307-41fb-8c95-13b5a1e2f602)
+
 - 맵에 배치된 코인을 수집하여 점수를 획득합니다.
 
 ### GameOver
-![bandicam 2025-12-14 21-58-13-948 (2)](https://github.com/user-attachments/assets/cda1e0a0-6ffa-4e7f-ae4f-81356a664fb9)
+![bandicam 2025-12-14 21-58-13-948 (2)](https://github.com/user-attachments/assets/d29fe1a3-ba16-4fca-80b8-d2122d538f8b)
 - HP가 0이 되면 플레이어는 쓰러집니다.
 
 ---
