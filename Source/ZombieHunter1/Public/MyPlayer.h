@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -14,6 +14,7 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 	GENERATED_BODY()
 	UMyCanvas* CanvasWidget; 
 
+	bool checkDead();
 public:
 	// Sets default values for this character's properties
 	AMyPlayer();
@@ -28,19 +29,33 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	// CheckDeath í•¨ìˆ˜ê°€ ë¦¬í„´ê°’ì´ ì—†ë‹¤ë©´
+	UFUNCTION(BlueprintImplementableEvent)
+	void CheckDeath(bool isDead);
+
+
 	UFUNCTION(BlueprintCallable)
 	void SetCanvasWidget(UMyCanvas* cw);
 
-	// ºí·çÇÁ¸°Æ®¿¡¼­ ÀĞ°í ¾µ ¼ö ÀÖ´Â Money º¯¼ö
+	// ë¸”ë£¨í”„ë¦°íŠ¸ì—ì„œ ì½ê³  ì“¸ ìˆ˜ ìˆëŠ” Money ë³€ìˆ˜
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
 	int32 Money;
+	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
+	int32 HP;
 
 	//AddCoin
 	UFUNCTION(BlueprintCallable)
 	void AddMoney();
 
 	UFUNCTION(BlueprintCallable)
-	void SetProgressUISize(FVector2D size);
+	void AddHP(int add_hp);
+
+	UFUNCTION(BlueprintCallable)
+	void SetHP(int new_hp);
+
+
 
 
 };

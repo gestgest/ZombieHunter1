@@ -63,10 +63,24 @@ void AMyPlayer::AddMoney()
 
 }
 
-void AMyPlayer::SetProgressUISize(FVector2D size)
+void AMyPlayer::AddHP(int add_hp)
 {
+    SetHP(this->HP + add_hp);
+}
+
+void AMyPlayer::SetHP(int new_hp)
+{
+    this->HP = new_hp;
+
+    FVector2D size(new_hp * 100, 50);
     if (CanvasWidget)
     {
         CanvasWidget->SetProgressUISize(size);
     }
+    CheckDeath(checkDead());
+}
+
+bool AMyPlayer::checkDead()
+{
+    return this->HP <= 0;
 }
