@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+癤�// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "MyPlayer.h"
@@ -16,49 +16,57 @@ AMyPlayer::AMyPlayer()
 void AMyPlayer::BeginPlay()
 {
 	Super::BeginPlay();
-    Money = 1;
+    Money = 0;
+    if (CanvasWidget)
+    {
+        CanvasWidget->UpdateCoinText(Money);
+    }
 
+    //if (CanvasWidgetClass)
+    //{
+    //    CanvasWidget = CreateWidget<UMyCanvas>(GetWorld(), CanvasWidgetClass);
+    //    if (CanvasWidget)
+    //    {
+    //        CanvasWidget->AddToViewport();
+    //    }
+    //}
 }
 
 // Called every frame
 void AMyPlayer::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
 
+}
+
+void AMyPlayer::SetCanvasWidget(UMyCanvas* cw)
+{
+    CanvasWidget = cw;
 }
 
 // Called to bind functionality to input
 void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 }
 
 void AMyPlayer::AddMoney()
 {
-	//GetTargetLocation();
-	Money++;
+    //GetTargetLocation();
+    Money++;
 
-    // 위젯이 생성되어 있는지 확인
     if (CanvasWidget)
     {
-        // 위젯에서 CoinText 찾기
-        UTextBlock* CoinText = Cast<UTextBlock>(CanvasWidget->GetWidgetFromName(TEXT("CoinText")));
-
-        if (CoinText)
-        {
-            // int를 FText로 변환하고 포맷팅
-            FText MoneyText = FText::Format(
-                FText::FromString(TEXT("{0} 원")),
-                FText::AsNumber(Money)
-            );
-
-            // CoinText에 설정
-            CoinText->SetText(MoneyText);
-        }
+        CanvasWidget->UpdateCoinText(Money);
     }
-    else
+
+}
+
+void AMyPlayer::SetProgressUISize(FVector2D size)
+{
+    if (CanvasWidget)
     {
-        UE_LOG(LogTemp, Log, TEXT("PPAP"));
+        CanvasWidget->SetProgressUISize(size);
     }
 }

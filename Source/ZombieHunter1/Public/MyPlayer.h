@@ -4,12 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "MyCanvas.h" 
 #include "MyPlayer.generated.h"
+
 
 UCLASS()
 class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 {
 	GENERATED_BODY()
+	UMyCanvas* CanvasWidget; 
 
 public:
 	// Sets default values for this character's properties
@@ -18,7 +21,6 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -26,9 +28,8 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// 생성된 위젯 인스턴스
-	UPROPERTY(BlueprintReadWrite, Category = "UI")
-	TObjectPtr<UUserWidget> CanvasWidget;
+	UFUNCTION(BlueprintCallable)
+	void SetCanvasWidget(UMyCanvas* cw);
 
 	// 블루프린트에서 읽고 쓸 수 있는 Money 변수
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
@@ -37,4 +38,9 @@ public:
 	//AddCoin
 	UFUNCTION(BlueprintCallable)
 	void AddMoney();
+
+	UFUNCTION(BlueprintCallable)
+	void SetProgressUISize(FVector2D size);
+
+
 };
