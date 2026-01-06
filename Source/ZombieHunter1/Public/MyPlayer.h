@@ -14,7 +14,6 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 	GENERATED_BODY()
 	UMyCanvas* CanvasWidget; 
 
-	bool checkDead();
 public:
 	// Sets default values for this character's properties
 	AMyPlayer();
@@ -55,7 +54,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetHP(int new_hp);
 
-
-
-
+	UFUNCTION(BlueprintCallable)
+	bool checkDead();
 };

@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -13,7 +13,9 @@ public class ZombieHunter1 : ModuleRules
             "Engine",
             "InputCore",
             "EnhancedInput",
-            "UMG"
+            "UMG",
+            "AIModule",
+            "NavigationSystem"  // 경로 찾기 기능
         });
     }
 }
