@@ -4,6 +4,7 @@
 #include "MyPlayer.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
+#include "GameFramework/CharacterMovementComponent.h" //GetCharacterMovement
 
 // Sets default values
 AMyPlayer::AMyPlayer()
@@ -82,5 +83,14 @@ void AMyPlayer::SetHP(int new_hp)
 
 bool AMyPlayer::checkDead()
 {
-    return this->HP <= 0;
+    bool isDead = this->HP <= 0;
+    if (isDead)
+    {
+        GetCharacterMovement()->DisableMovement();
+    }
+    else
+    {
+        GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+    }
+    return isDead;
 }
