@@ -4,6 +4,8 @@
 #include "MyPlayer.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
+
+#include "GameFramework/GameModeBase.h"
 #include "GameFramework/CharacterMovementComponent.h" //GetCharacterMovement
 
 // Sets default values
@@ -17,20 +19,16 @@ AMyPlayer::AMyPlayer()
 void AMyPlayer::BeginPlay()
 {
 	Super::BeginPlay();
-    Money = 0;
-    if (CanvasWidget)
+    SetMoney(0);
+    
+    controller = Cast<APlayerController>(GetController());
+
+    if (AGameModeBase* gameMode = GetWorld()->GetAuthGameMode())
     {
-        CanvasWidget->UpdateCoinText(Money);
+         playerStart = gameMode->FindPlayerStart(controller);
     }
 
-    //if (CanvasWidgetClass)
-    //{
-    //    CanvasWidget = CreateWidget<UMyCanvas>(GetWorld(), CanvasWidgetClass);
-    //    if (CanvasWidget)
-    //    {
-    //        CanvasWidget->AddToViewport();
-    //    }
-    //}
+
 }
 
 // Called every frame
@@ -40,9 +38,9 @@ void AMyPlayer::Tick(float DeltaTime)
 
 }
 
-void AMyPlayer::SetCanvasWidget(UMyCanvas* cw)
+void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
 {
-    CanvasWidget = cw;
+    CanvasWidget = CW;
 }
 
 // Called to bind functionality to input
@@ -55,11 +53,17 @@ void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 void AMyPlayer::AddMoney()
 {
     //GetTargetLocation();
-    Money++;
+    SetMoney(Money + 1);
+}
+
+void AMyPlayer::SetMoney(int value)
+{
+    //GetTargetLocation();
+    this->Money = value;
 
     if (CanvasWidget)
     {
-        CanvasWidget->UpdateCoinText(Money);
+        CanvasWidget->UpdateCoinText(this->Money);
     }
 
 }
@@ -87,10 +91,37 @@ bool AMyPlayer::checkDead()
     if (isDead)
     {
         GetCharacterMovement()->DisableMovement();
+        CanvasWidget->SetVisRestartButton(true); //버튼 on
+
+        if (controller)
+        {
+            controller->bShowMouseCursor = true;
+            controller->SetInputMode(FInputModeUIOnly());
+        }
     }
     else
     {
         GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+        CanvasWidget->SetVisRestartButton(false); //버튼 off
+        
+        if (controller)
+        {
+            //3인칭
+            controller->bShowMouseCursor = false;
+            controller->SetInputMode(FInputModeGameOnly());
+        }
+
     }
     return isDead;
+}
+
+void AMyPlayer::ReStart()
+{
+    SetHP(5);
+    SetMoney(0);
+    //리스폰
+    if (playerStart)
+    {
+        SetActorLocation(playerStart->GetActorLocation());
+    }
 }

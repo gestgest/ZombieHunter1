@@ -2,7 +2,8 @@
 
 
 #include "MyCanvas.h"
-
+#include "MyPlayer.h"
+#include "Kismet/GameplayStatics.h" //getCharacter, sound
 
 void UMyCanvas::NativeConstruct()
 {
@@ -31,5 +32,21 @@ void UMyCanvas::SetProgressUISize(FVector2D size)
             CanvasSlot->SetSize(size);
             //UE_LOG(LogTemp, Log, TEXT("hp_bar size set to: %s"), *size.ToString());
         }
+    }
+}
+
+void UMyCanvas::RestartGame()
+{
+    AMyPlayer* myPlayer = Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+    myPlayer->ReStart();
+}
+void UMyCanvas::SetVisRestartButton(bool isVis)
+{
+    //ESlateVisibility::Visible
+    //ESlateVisibility::Hidden
+    if (RestartButton)
+    {
+        ESlateVisibility ev = isVis ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
+        RestartButton->SetVisibility(ev);
     }
 }

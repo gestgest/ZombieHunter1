@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -7,12 +7,10 @@
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/Button.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "MyCanvas.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class ZOMBIEHUNTER1_API UMyCanvas : public UUserWidget
 {
@@ -22,14 +20,26 @@ protected:
     virtual void NativeConstruct() override;
 
 public:
-    // CoinText¿Í ÀÚµ¿À¸·Î ¹ÙÀÎµùµÊ
+
+    //ë³€ìˆ˜ë“¤
+    // CoinTextì™€ ìë™ìœ¼ë¡œ ë°”ì¸ë”©ë¨
     UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
     UTextBlock* CoinText;
 
     UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
     UImage* hp_bar;
 
+    UPROPERTY(meta = (BindWidget))
+    UButton* RestartButton;
 
+
+    //BlueprintCallable í•¨ìˆ˜ë“¤
+    UFUNCTION(BlueprintCallable)
+    void RestartGame();
+
+    
     void UpdateCoinText(int32 Money);
     void SetProgressUISize(FVector2D size);
+    void SetVisRestartButton(bool isVis);
+
 };

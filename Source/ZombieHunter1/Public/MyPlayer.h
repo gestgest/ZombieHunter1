@@ -12,7 +12,9 @@ UCLASS()
 class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 {
 	GENERATED_BODY()
-	UMyCanvas* CanvasWidget; 
+	UMyCanvas* CanvasWidget;
+	APlayerController* controller;
+	AActor* playerStart;
 
 public:
 	// Sets default values for this character's properties
@@ -28,25 +30,33 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// CheckDeath 함수가 리턴값이 없다면
-	UFUNCTION(BlueprintImplementableEvent, Category = "Player")
-	void CheckDeath(bool isDead);
 
 
-	UFUNCTION(BlueprintCallable)
-	void SetCanvasWidget(UMyCanvas* cw);
+
 
 	// 블루프린트에서 읽고 쓸 수 있는 Money 변수
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
 	int32 Money;
-	
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
 	int32 HP;
 
+
+
+
+
+	// CheckDeath 함수가 리턴값이 없다면
+	UFUNCTION(BlueprintImplementableEvent, Category = "Player")
+	void CheckDeath(bool isDead);
+
+	UFUNCTION(BlueprintCallable)
+	void SetCanvasWidget(UMyCanvas* CW);
+
 	//AddCoin
 	UFUNCTION(BlueprintCallable)
 	void AddMoney();
+	
 
 	UFUNCTION(BlueprintCallable)
 	void AddHP(int add_hp);
@@ -56,4 +66,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool checkDead();
+
+
+	void ReStart();
+	void SetMoney(int Money);
+
 };

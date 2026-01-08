@@ -81,7 +81,6 @@ void AEnemy::TrackingPlayer()
 //추격을 완료했다면
 void AEnemy::MoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
 {
-
 	//USkeletalMeshComponent* mesh = GetMesh();
 	if (CanAttack)
 	{
