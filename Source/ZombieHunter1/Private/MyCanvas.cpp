@@ -40,10 +40,11 @@ void UMyCanvas::RestartGame()
     AMyPlayer* myPlayer = Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
     myPlayer->ReStart();
 }
+
 void UMyCanvas::SetVisRestartButton(bool isVis)
 {
-    //ESlateVisibility::Visible
-    //ESlateVisibility::Hidden
+    //ESlateVisibility::Visible 보이는 거
+    //ESlateVisibility::Hidden 안 보이는 거
     if (RestartButton)
     {
         ESlateVisibility ev = isVis ? ESlateVisibility::Visible : ESlateVisibility::Hidden;

@@ -27,6 +27,7 @@ void AEnemy::BeginPlay()
 	Super::BeginPlay();
 	CanAttack = true;
 	Damage = 1;
+	SetHP(5);
 	
 	UAnimInstance* animInstance = Cast<UAnimInstance>(GetMesh()->GetAnimInstance());
 	aiController = Cast<AAIController>(GetController());
@@ -51,7 +52,7 @@ void AEnemy::BeginPlay()
 void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	DebugHPShow();
 }
 
 // Called to bind functionality to input
@@ -74,7 +75,7 @@ void AEnemy::TrackingPlayer()
 	if (aiController)
 	{
 		aiController->SetFocus(myPlayer);
-		aiController->MoveToActor(myPlayer, 100);
+		aiController->MoveToActor(myPlayer, attackRange);
 	}
 }
 
@@ -125,9 +126,9 @@ bool AEnemy::hit()
 	TArray<FHitResult> hitResults;
 	FVector start = GetActorLocation();
 	FVector end = start + (GetActorForwardVector() * 150.0f);
-	float radius = 25.0f;
+	
 
-	FCollisionShape Sphere = FCollisionShape::MakeSphere(radius);
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(attackRange);
 	FCollisionQueryParams queryParams;
 	queryParams.AddIgnoredActor(this);
 
@@ -138,7 +139,7 @@ bool AEnemy::hit()
 		end,
 		FQuat::Identity,
 		ECC_Pawn, //TraceChannel
-		FCollisionShape::MakeSphere(radius),
+		Sphere,
 		queryParams
 	);
 
@@ -147,7 +148,7 @@ bool AEnemy::hit()
 		AMyPlayer* hitCharacter = Cast<AMyPlayer>(hit.GetActor());
 		if (hitCharacter && hitCharacter->IsPlayerControlled())
 		{
-			UE_LOG(LogTemp, Log, TEXT("Hit Player!"));
+			//UE_LOG(LogTemp, Log, TEXT("Hit Player!"));
 			hitCharacter->AddHP(-Damage);
 			FVector force = GetActorForwardVector() * 500 + FVector(0, 0, 100);
 			hitCharacter->LaunchCharacter(force, false, false);
@@ -155,4 +156,27 @@ bool AEnemy::hit()
 		}
 	}
 	return isAttack;
+}
+
+void AEnemy::DebugHPShow()
+{
+	UE_LOG(LogTemp, Log, TEXT("bobo : %d"), HP);
+}
+
+void AEnemy::AddHP(int add_hp)
+{
+	SetHP(this->HP + add_hp);
+}
+
+void AEnemy::SetHP(int new_hp)
+{
+	this->HP = new_hp;
+
+	if (this->HP <= 0)
+	{
+		IsDead = true;
+	}
+	else {
+		IsDead = false;
+	}
 }

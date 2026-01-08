@@ -23,9 +23,12 @@ class ZOMBIEHUNTER1_API AEnemy : public ACharacter
 	GENERATED_BODY()
 
 	bool CanAttack;
+	float attackRange = 25;
 	AAIController* aiController;
 
 	bool hit();
+	void DebugHPShow();
+	
 
 public:
 	// Sets default values for this character's properties
@@ -48,6 +51,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Stats")
 	int Damage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Stats")
+	int32 HP;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly , Category = "Enemy|Stats")
+	bool IsDead;
+
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UAnimMontage* AttackMontage;
 
@@ -59,6 +69,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void TrackingPlayer();
 
+
 	//UFUNCTION(BlueprintCallable)
 	void MoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
 
@@ -68,5 +79,6 @@ public:
 	UFUNCTION() //몽타주의 delegate에 추가하려면 필수다.
 	void OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload);
 
-
+	void AddHP(int add_hp);
+	void SetHP(int new_hp);
 };

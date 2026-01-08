@@ -16,6 +16,9 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 	APlayerController* controller;
 	AActor* playerStart;
 
+	bool hit();
+
+
 public:
 	// Sets default values for this character's properties
 	AMyPlayer();
@@ -37,18 +40,24 @@ public:
 	// 블루프린트에서 읽고 쓸 수 있는 Money 변수
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
 	int32 Money;
-
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
 	int32 HP;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
+	int32 Damage;
 
-
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* AttackSound; //MS
 
 
 	// CheckDeath 함수가 리턴값이 없다면
 	UFUNCTION(BlueprintImplementableEvent, Category = "Player")
 	void CheckDeath(bool isDead);
+
+	UFUNCTION() //몽타주의 delegate에 추가하려면 필수다.
+	void OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload);
+
+
+
 
 	UFUNCTION(BlueprintCallable)
 	void SetCanvasWidget(UMyCanvas* CW);

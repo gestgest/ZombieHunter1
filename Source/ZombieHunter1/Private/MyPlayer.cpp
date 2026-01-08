@@ -2,11 +2,16 @@
 
 
 #include "MyPlayer.h"
+#include "Enemy.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
+#include "Kismet/GameplayStatics.h" //getCharacter, sound
+
 
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/CharacterMovementComponent.h" //GetCharacterMovement
+
+
 
 // Sets default values
 AMyPlayer::AMyPlayer()
@@ -20,6 +25,7 @@ void AMyPlayer::BeginPlay()
 {
 	Super::BeginPlay();
     SetMoney(0);
+    Damage = 1;
     
     controller = Cast<APlayerController>(GetController());
 
@@ -28,6 +34,14 @@ void AMyPlayer::BeginPlay()
          playerStart = gameMode->FindPlayerStart(controller);
     }
 
+    UAnimInstance* animInstance = Cast<UAnimInstance>(GetMesh()->GetAnimInstance());
+
+    if (animInstance)
+    {
+        animInstance->OnPlayMontageNotifyBegin.AddDynamic(
+            this, &AMyPlayer::OnNotifyBeginReceived
+        ); //신호
+    }
 
 }
 
@@ -124,4 +138,67 @@ void AMyPlayer::ReStart()
     {
         SetActorLocation(playerStart->GetActorLocation());
     }
+}
+
+void AMyPlayer::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload)
+{
+
+    if (hit())
+    {
+        //사운드
+        if (AttackSound)
+        {
+            UGameplayStatics::PlaySoundAtLocation(
+                this,  // WorldContextObject
+                AttackSound,
+                GetActorLocation(),
+                1.0f,  // VolumeMultiplier
+                1.0f   // PitchMultiplier
+            );
+        }
+    }
+}
+
+bool AMyPlayer::hit()
+{
+    bool isAttack = false;
+
+    //여기에 함수 죄다 넣어야 함
+    TArray<FHitResult> hitResults;
+    FVector start = GetActorLocation();
+    FVector end = start + (GetActorForwardVector() * 150.0f);
+    float radius = 25.0f;
+
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(radius);
+    FCollisionQueryParams queryParams;
+    queryParams.AddIgnoredActor(this);
+
+    //SweepSingleByChanne
+    bool bHit = GetWorld()->SweepMultiByChannel(
+        hitResults,
+        start,
+        end,
+        FQuat::Identity,
+        ECC_Pawn, //TraceChannel
+        FCollisionShape::MakeSphere(radius),
+        queryParams
+    );
+
+    for (const FHitResult& hit : hitResults)
+    {
+        AEnemy* hitEnemy = Cast<AEnemy>(hit.GetActor());
+        if (hitEnemy)
+        {
+            UE_LOG(LogTemp, Log, TEXT("Hit Enemy!"));
+            hitEnemy->AddHP(-Damage);
+            FVector force = GetActorForwardVector() * 500 + FVector(0, 0, 100);
+            hitEnemy->LaunchCharacter(force, false, false);
+            isAttack = true;
+        }
+        else
+        {
+            UE_LOG(LogTemp, Log, TEXT("oh no!"));
+        }
+    }
+    return isAttack;
 }
