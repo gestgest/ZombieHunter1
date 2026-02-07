@@ -52,7 +52,6 @@ void AEnemy::BeginPlay()
 void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	DebugHPShow();
 }
 
 // Called to bind functionality to input
@@ -125,7 +124,7 @@ bool AEnemy::hit()
 	//여기에 함수 죄다 넣어야 함
 	TArray<FHitResult> hitResults;
 	FVector start = GetActorLocation();
-	FVector end = start + (GetActorForwardVector() * 150.0f);
+	FVector end = start + (GetActorForwardVector() * attackRange);
 	
 
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(attackRange);

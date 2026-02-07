@@ -23,7 +23,7 @@ class ZOMBIEHUNTER1_API AEnemy : public ACharacter
 	GENERATED_BODY()
 
 	bool CanAttack;
-	float attackRange = 25;
+	float attackRange = 50;
 	AAIController* aiController;
 
 	bool hit();
