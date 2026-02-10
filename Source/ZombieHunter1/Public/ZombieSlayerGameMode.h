@@ -6,6 +6,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Enemy.h"
+#include "MyPlayer.h"
+#include "NavigationSystem.h"
+#include "Kismet/GameplayStatics.h"
 #include "Engine/TargetPoint.h"  // ATargetPoint 클래스 정의
 
 #include "ZombieSlayerGameMode.generated.h"
@@ -26,7 +29,6 @@ class ZOMBIEHUNTER1_API AZombieSlayerGameMode : public AGameModeBase
 
 	void initEnemy();
 	void initCoin();
-	void spawnEnemy();
 	void spawnCoin();
 
 	void init();
@@ -43,4 +45,8 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Coin")
 	TSubclassOf<AActor> CoinClass;
+
+	UFUNCTION(BlueprintCallable)
+	void SpawnEnemy();
+
 };
