@@ -2,7 +2,6 @@
 
 #include "Enemy.h"
 #include "MyPlayer.h"
-#include "AIController.h"
 #include "NavigationSystem.h"  // 내비게이션 사용 시
 #include "Kismet/GameplayStatics.h" //getCharacter, sound
 //#include "Kismet/KismetSystemLibrary.h" //ray
@@ -18,16 +17,19 @@ AEnemy::AEnemy()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-
+	// 스폰될 때도 자동으로 AIController를 생성해서 빙의하도록 설정
+	//AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	// 기본 AI 컨트롤러 클래스 지정
+	//AIControllerClass = AAIController::StaticClass();
 }
 
 // Called when the game starts or when spawned
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
+	SetHP(5);
 	CanAttack = true;
 	Damage = 1;
-	SetHP(5);
 	
 	UAnimInstance* animInstance = Cast<UAnimInstance>(GetMesh()->GetAnimInstance());
 	aiController = Cast<AAIController>(GetController());
@@ -41,9 +43,9 @@ void AEnemy::BeginPlay()
 		); //신호
 	}
 
-	//추격을 완료했다면 - 콜백
 	if (aiController)
 	{
+		//추격을 완료했다면 - 콜백
 		aiController->GetPathFollowingComponent()->OnRequestFinished.AddUObject(this, &AEnemy::MoveCompleted);
 	}
 }
@@ -66,7 +68,7 @@ void AEnemy::TrackingPlayer()
 	AMyPlayer* myPlayer = Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
 
 	//isDead라면 추격하면 안됨
-	if (myPlayer->checkDead())
+	if (myPlayer->checkDead() || IsDead)
 	{
 		return;
 	}
@@ -116,6 +118,7 @@ void AEnemy::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotify
 		}
 	}
 }
+
 
 bool AEnemy::hit()
 {
@@ -171,11 +174,33 @@ void AEnemy::SetHP(int new_hp)
 {
 	this->HP = new_hp;
 
-	if (this->HP <= 0)
+	//death
+	SetIsDead(this->HP <= 0);
+}
+
+void AEnemy::SetID(int id)
+{
+	this->enemy_id = id;
+}
+
+void AEnemy::SetIsDead(bool value)
+{
+	IsDead = value;
+
+	//죽었다면(true)
+	if (value)
 	{
-		IsDead = true;
+		DeadEnemySignal(enemy_id);
+		//GameMode의 DieEnemy 함수를 호출
 	}
-	else {
-		IsDead = false;
-	}
+	//아직 살아있다면...?
+}
+
+void AEnemy::SetAIController()
+{
+	SpawnDefaultController(); //강제 호출
+
+	aiController = Cast<AAIController>(GetController());
+
+	aiController->GetPathFollowingComponent()->OnRequestFinished.AddUObject(this, &AEnemy::MoveCompleted);
 }

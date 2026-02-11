@@ -27,7 +27,7 @@ class ZOMBIEHUNTER1_API AZombieSlayerGameMode : public AGameModeBase
 	int enemy_size = 0;
 	int coin_size = 0;
 
-	void initEnemy();
+	void initEnemy(int index);
 	void initCoin();
 	void spawnCoin();
 
@@ -35,6 +35,9 @@ class ZOMBIEHUNTER1_API AZombieSlayerGameMode : public AGameModeBase
 
 public:
 	virtual void StartPlay() override;
+
+	UPROPERTY()
+	FTimerHandle SpawnTimerHandle; //타이머 설정 변수
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawners")
 	TArray<ATargetPoint*> Spawners;
@@ -49,4 +52,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SpawnEnemy();
 
+	UFUNCTION(BlueprintCallable)
+	void DieEnemy(int index);
 };

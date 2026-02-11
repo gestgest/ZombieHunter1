@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AIController.h"
 #include "GameFramework/Character.h"
 
 //전방 선언
@@ -22,13 +23,14 @@ class ZOMBIEHUNTER1_API AEnemy : public ACharacter
 {
 	GENERATED_BODY()
 
-	bool CanAttack;
-	float attackRange = 50;
-	AAIController* aiController;
-
 	bool hit();
 	void DebugHPShow();
+
+	AAIController* aiController;
 	
+	float attackRange = 50;
+	int enemy_id;
+	bool CanAttack;
 
 public:
 	// Sets default values for this character's properties
@@ -37,6 +39,7 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	//virtual void PossessedBy(AController* NewController) override;
 
 public:
 	// Called every frame
@@ -81,4 +84,14 @@ public:
 
 	void AddHP(int add_hp);
 	void SetHP(int new_hp);
+	void SetID(int id);
+
+	void SetIsDead(bool value);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Enemy")
+	void DeadEnemySignal(int index);
+
+
+	void SetAIController();
+
 };
