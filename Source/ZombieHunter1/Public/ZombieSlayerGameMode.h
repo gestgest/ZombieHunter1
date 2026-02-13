@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Enemy.h"
+#include "Coin.h"
 #include "MyPlayer.h"
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
@@ -22,13 +23,15 @@ class ZOMBIEHUNTER1_API AZombieSlayerGameMode : public AGameModeBase
 	GENERATED_BODY()
 	
 	TArray<AEnemy*> enemyPool;
-	TArray<AActor*> coinPool;
+	TArray<ACoin*> coinPool;
 	
 	int enemy_size = 0;
 	int coin_size = 0;
 
 	void initEnemy(int index);
-	void initCoin();
+	void initCoin(int index);
+
+	void spawn();
 	void spawnCoin();
 
 	void init();
@@ -54,4 +57,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void DieEnemy(int index);
+
+	UFUNCTION(BlueprintCallable)
+	void DestroyCoin(int index);
+
 };

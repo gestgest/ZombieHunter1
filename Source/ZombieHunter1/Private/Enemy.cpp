@@ -37,7 +37,8 @@ void AEnemy::BeginPlay()
 	if (animInstance)
 	{
 		//AttackMontage-> 몽타주 세팅
-		animInstance->OnMontageEnded.AddDynamic(this, &AEnemy::OnAttackMontageEnded);
+		animInstance->OnMontageEnded.AddDynamic(this, &AEnemy::OnMontageEnded);
+
 		animInstance->OnPlayMontageNotifyBegin.AddDynamic(
 			this, &AEnemy::OnNotifyBeginReceived
 		); //신호
@@ -83,43 +84,50 @@ void AEnemy::TrackingPlayer()
 //추격을 완료했다면
 void AEnemy::MoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
 {
-	//USkeletalMeshComponent* mesh = GetMesh();
-	if (CanAttack)
+
+	if (Result.Code == EPathFollowingResult::Success)
 	{
-		PlayAnimMontage(AttackMontage); //지속시간 매개변수 있음
-		//UE_LOG(LogTemp, Warning, TEXT("Montage Duration: %f"), duration);
-		CanAttack = false;
+		if (CanAttack)
+		{
+			PlayAnimMontage(AttackMontage); //지속시간 매개변수 있음
+			//UE_LOG(LogTemp, Warning, TEXT("Montage Duration: %f"), duration);
+			CanAttack = false;
+		}
 	}
+
 }
 
 //공격 몽타주 애니메이션이 끝났다면
-void AEnemy::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+void AEnemy::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	//UE_LOG(LogTemp, Log, TEXT("OnAttackMontageEnded"));
 	CanAttack = true;
 }
 
+//모든 노디파이 관리
 void AEnemy::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload)
 {
 	//UE_LOG(LogTemp, Log, TEXT("attack signal"));
-
-	if (hit())
+	if (NotifyName == FName("Attack"))
 	{
-		//사운드
-		if (AttackSound)
+		if (hit())
 		{
-			UGameplayStatics::PlaySoundAtLocation(
-				this,  // WorldContextObject
-				AttackSound,
-				GetActorLocation(),
-				1.0f,  // VolumeMultiplier
-				1.0f   // PitchMultiplier
-			);
+			//사운드
+			if (AttackSound)
+			{
+				UGameplayStatics::PlaySoundAtLocation(
+					this,  // WorldContextObject
+					AttackSound,
+					GetActorLocation(),
+					1.0f,  // VolumeMultiplier
+					1.0f   // PitchMultiplier
+				);
+			}
 		}
 	}
 }
 
 
+//일단 때리는 애니메이션
 bool AEnemy::hit()
 {
 	bool isAttack = false;
@@ -134,15 +142,27 @@ bool AEnemy::hit()
 	FCollisionQueryParams queryParams;
 	queryParams.AddIgnoredActor(this);
 
-	//SweepSingleByChanne
-	bool bHit = GetWorld()->SweepMultiByChannel(
-		hitResults,
+	// 끝 위치에 구 그리기
+	DrawDebugSphere(
+		GetWorld(),
+		end,
+		attackRange,
+		32,
+		FColor::Green,
+		false,
+		2.0f
+	);
+
+	// Sweep 경로를 선으로 연결
+	DrawDebugLine(
+		GetWorld(),
 		start,
 		end,
-		FQuat::Identity,
-		ECC_Pawn, //TraceChannel
-		Sphere,
-		queryParams
+		FColor::Red,
+		false,
+		2.0f,
+		0,
+		2.0f
 	);
 
 	for (const FHitResult& hit : hitResults)
@@ -187,13 +207,10 @@ void AEnemy::SetIsDead(bool value)
 {
 	IsDead = value;
 
-	//죽었다면(true)
 	if (value)
 	{
 		DeadEnemySignal(enemy_id);
-		//GameMode의 DieEnemy 함수를 호출
 	}
-	//아직 살아있다면...?
 }
 
 void AEnemy::SetAIController()

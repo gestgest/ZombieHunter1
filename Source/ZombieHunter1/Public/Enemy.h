@@ -28,7 +28,7 @@ class ZOMBIEHUNTER1_API AEnemy : public ACharacter
 
 	AAIController* aiController;
 	
-	float attackRange = 50;
+	float attackRange = 50.0f;
 	int enemy_id;
 	bool CanAttack;
 
@@ -77,7 +77,7 @@ public:
 	void MoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
 
 	UFUNCTION() //몽타주의 delegate에 추가하려면 필수다.
-	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 	UFUNCTION() //몽타주의 delegate에 추가하려면 필수다.
 	void OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload);

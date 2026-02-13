@@ -14,7 +14,7 @@ void AZombieSlayerGameMode::StartPlay()
     GetWorldTimerManager().SetTimer(
         SpawnTimerHandle,           // 타이머 핸들
         this,                        // 호출할 객체
-        &AZombieSlayerGameMode::SpawnEnemy,  // 호출할 함수
+        &AZombieSlayerGameMode::spawn,  // 호출할 함수
         5.0f,                        // 간격 (5초)
         true                         // 반복 여부 (true = 반복)
     );
@@ -32,7 +32,7 @@ void AZombieSlayerGameMode::init()
     }
     for (int i = 0; i < MAX_COIN_SIZE; i++)
     {
-        initCoin();
+        initCoin(i);
     }
 }
 
@@ -64,19 +64,35 @@ void AZombieSlayerGameMode::initEnemy(int index)
     }
 }
 
-void AZombieSlayerGameMode::initCoin()
+void AZombieSlayerGameMode::initCoin(int index)
 {
-    AActor* NewCoin = GetWorld()->SpawnActor<AActor>(
+    FVector SpawnLocation = FVector(0, 0, 90);
+    FRotator SpawnRotation = FRotator::ZeroRotator;
+
+    // SpawnParameters 설정
+    FActorSpawnParameters spawnParams;
+    spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    ACoin* newCoin = GetWorld()->SpawnActor<ACoin>(
         CoinClass,
-        FVector(100, 0, 50),
-        FRotator::ZeroRotator
+        SpawnLocation,
+        SpawnRotation,
+        spawnParams
     );
 
-    if (NewCoin)
+    newCoin->setID(index);
+    newCoin->SetCanGet(false);
+
+    if (newCoin)
     {
-        coinPool.Add(NewCoin);
-        NewCoin->SetActorHiddenInGame(true);  // 비활성화
+        coinPool.Add(newCoin);
+        newCoin->SetActorHiddenInGame(true);  // 비활성화
     }
+}
+void AZombieSlayerGameMode::spawn()
+{
+    SpawnEnemy();
+    spawnCoin();
 }
 
 void AZombieSlayerGameMode::SpawnEnemy()
@@ -121,34 +137,88 @@ void AZombieSlayerGameMode::SpawnEnemy()
 
     if (bSuccess)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White,
-            FString::Printf(TEXT("generative enemy")));
         enemy->SetActorLocation(resultLocation.Location + upVector);
-        enemy->SetActorEnableCollision(true);
         enemy->SetActorHiddenInGame(false);
         enemy->SetHP(5);
     }
     else
     {
-        enemy_size--;
+        return;
     }
 
     enemy_size++;
 }
 
-//적이 죽으면 enemy_size를 줄여야 하는데
 
 void AZombieSlayerGameMode::spawnCoin()
 {
+    int i = 0;
+
+    for (; i < coinPool.Num(); i++)
+    {
+        if (coinPool[i]->IsHidden())
+        {
+            break;
+        }
+    }
+
+    //Max
+    if (i == coinPool.Num())
+    {
+        return;
+    }
+
+    ACoin* coin = coinPool[i];
+    UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+
+    float radius = 500;
+
+
+    AMyPlayer* myPlayer =
+        Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+
+    FVector playerLocation = myPlayer->GetActorLocation();
+    FNavLocation resultLocation;
+
+    // 플레이어 주변 Radius 내 랜덤 도달가능 위치 찾기
+    bool bSuccess = NavSys->GetRandomReachablePointInRadius(playerLocation, radius, resultLocation);
+
+    FVector upVector(0, 0, 90.0f);
+    
+    if (bSuccess)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White,
+            FString::Printf(TEXT("generative coin")));
+        coin->SetActorLocation(resultLocation.Location + upVector);
+        coin->SetActorEnableCollision(true);
+        coin->SetActorHiddenInGame(false);
+        coin->SetCanGet(true);
+    }
+    else
+    {
+        return;
+    }
+
+    coin_size++;
 }
 
+//signal을 받아야지 될듯
 void AZombieSlayerGameMode::DieEnemy(int index)
 {
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White,
-        FString::Printf(TEXT("Die")));
-
     enemy_size--;
     //enemyPool[index]->SetActorEnableCollision(false);
     // => 너무 바깥 범위를 넘어간듯
     enemyPool[index]->SetActorHiddenInGame(true);  // 비활성화
+}
+
+//signal을 받아야지 될듯
+void AZombieSlayerGameMode::DestroyCoin(int index)
+{
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White,
+        FString::Printf(TEXT("delicious")));
+    coin_size--;
+    //enemyPool[index]->SetActorEnableCollision(false);
+    // => 너무 바깥 범위를 넘어간듯
+    coinPool[index]->SetCanGet(false);
+    coinPool[index]->SetActorHiddenInGame(true);  // 비활성화
 }
