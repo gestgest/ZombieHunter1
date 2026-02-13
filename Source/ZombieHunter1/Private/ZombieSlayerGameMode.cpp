@@ -187,8 +187,6 @@ void AZombieSlayerGameMode::spawnCoin()
     
     if (bSuccess)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White,
-            FString::Printf(TEXT("generative coin")));
         coin->SetActorLocation(resultLocation.Location + upVector);
         coin->SetActorEnableCollision(true);
         coin->SetActorHiddenInGame(false);
@@ -214,8 +212,6 @@ void AZombieSlayerGameMode::DieEnemy(int index)
 //signal을 받아야지 될듯
 void AZombieSlayerGameMode::DestroyCoin(int index)
 {
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White,
-        FString::Printf(TEXT("delicious")));
     coin_size--;
     //enemyPool[index]->SetActorEnableCollision(false);
     // => 너무 바깥 범위를 넘어간듯

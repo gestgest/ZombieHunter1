@@ -123,6 +123,10 @@ void AEnemy::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotify
 				);
 			}
 		}
+		else
+		{
+			//GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::White, FString::Printf(TEXT("NO")));
+		}
 	}
 }
 
@@ -138,20 +142,29 @@ bool AEnemy::hit()
 	FVector end = start + (GetActorForwardVector() * attackRange);
 	
 
-	FCollisionShape Sphere = FCollisionShape::MakeSphere(attackRange);
+	FCollisionShape sphere = FCollisionShape::MakeSphere(attackRange);
 	FCollisionQueryParams queryParams;
 	queryParams.AddIgnoredActor(this);
 
-	// 끝 위치에 구 그리기
-	DrawDebugSphere(
-		GetWorld(),
+	bool bHit = GetWorld()->SweepMultiByChannel(
+		hitResults,
+		start,
 		end,
-		attackRange,
-		32,
-		FColor::Green,
-		false,
-		2.0f
+		FQuat::Identity,
+		ECC_Pawn, //TraceChannel
+		sphere,
+		queryParams
 	);
+	// 끝 위치에 구 그리기
+	//DrawDebugSphere(
+	//	GetWorld(),
+	//	end,
+	//	attackRange,
+	//	32,
+	//	FColor::Green,
+	//	false,
+	//	2.0f
+	//);
 
 	// Sweep 경로를 선으로 연결
 	DrawDebugLine(

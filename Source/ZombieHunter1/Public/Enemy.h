@@ -28,7 +28,7 @@ class ZOMBIEHUNTER1_API AEnemy : public ACharacter
 
 	AAIController* aiController;
 	
-	float attackRange = 50.0f;
+	float attackRange = 100.0f;
 	int enemy_id;
 	bool CanAttack;
 
