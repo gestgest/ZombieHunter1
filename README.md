@@ -20,6 +20,18 @@
 ![bandicam 2025-12-14 21-58-13-948 (2)](https://github.com/user-attachments/assets/d29fe1a3-ba16-4fca-80b8-d2122d538f8b)
 - HP가 0이 되면 플레이어는 쓰러집니다.
 
+
+### 적, 코인 생성
+ ![bandicam 2026-02-13 00-58-35-815_success](https://github.com/user-attachments/assets/f7958179-a355-402e-aa4b-c12fcf40be96)<br>
+오브젝트 pooling 알고리즘을 활용해서 적과 코인을 주변에 생성합니다.
+
+### 부활
+<img width="773" height="365" alt="image" src="https://github.com/user-attachments/assets/37c655aa-f767-4b2a-8e35-d2fc87c951bc" />
+
+### 공격
+![bandicam 2026-01-09 02-46-22-305](https://github.com/user-attachments/assets/404c3035-8a47-4845-8f66-2f201bcc42a2)
+
+
 ---
 # SVN 목록
 - Content/Characters/*
