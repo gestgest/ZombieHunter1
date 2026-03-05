@@ -20,7 +20,7 @@
 ![bandicam 2025-12-14 21-58-13-948 (2)](https://github.com/user-attachments/assets/d29fe1a3-ba16-4fca-80b8-d2122d538f8b)
 - HP가 0이 되면 플레이어는 쓰러집니다.
 
-<img width="773" height="365" alt="image" src="https://github.com/user-attachments/assets/37c655aa-f767-4b2a-8e35-d2fc87c951bc" />
+<img width="773" height="365" alt="image" src="https://github.com/user-attachments/assets/37c655aa-f767-4b2a-8e35-d2fc87c951bc" /><br>
 - 이후 버튼을 누르면 HP가 가득 채워진 채 부활합니다.
 
 
