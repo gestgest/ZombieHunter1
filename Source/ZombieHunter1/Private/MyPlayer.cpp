@@ -5,11 +5,15 @@
 #include "Enemy.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/InputComponent.h" //BindAxisKey
+#include "InputCoreTypes.h"            //EKeys
 #include "Kismet/GameplayStatics.h" //getCharacter, sound
 
 
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/CharacterMovementComponent.h" //GetCharacterMovement
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 
 
 
@@ -18,6 +22,28 @@ AMyPlayer::AMyPlayer()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	// 컨트롤러 회전이 캐릭터를 돌리지 않게 함 (조준 방향으로 직접 회전시킴)
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+
+	// 이동 방향 자동 회전 끄기 — 오른쪽 스틱(조준) 방향으로 수동 회전
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 640.0f, 0.0f);
+
+	// 비스듬한 탑다운 카메라 암
+	TopDownBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("TopDownBoom"));
+	TopDownBoom->SetupAttachment(RootComponent);
+	TopDownBoom->SetUsingAbsoluteRotation(true); // 캐릭터가 회전해도 카메라는 고정
+	TopDownBoom->TargetArmLength = CameraDistance;
+	TopDownBoom->SetRelativeRotation(FRotator(CameraPitch, 0.0f, 0.0f));
+	TopDownBoom->bDoCollisionTest = false; // 탑다운: 벽에 의해 줌인되지 않게
+
+	// 탑다운 카메라
+	TopDownCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
+	TopDownCamera->SetupAttachment(TopDownBoom, USpringArmComponent::SocketName);
+	TopDownCamera->bUsePawnControlRotation = false;
 }
 
 // Called when the game starts or when spawned
@@ -26,6 +52,30 @@ void AMyPlayer::BeginPlay()
 	Super::BeginPlay();
     SetMoney(0);
     Damage = 1;
+
+    // 에디터에서 수정한 카메라 값 적용
+    if (TopDownBoom)
+    {
+        TopDownBoom->TargetArmLength = CameraDistance;
+        TopDownBoom->SetRelativeRotation(FRotator(CameraPitch, 0.0f, 0.0f));
+    }
+
+    // BP에 남아있는 옛 카메라(3인칭 등)를 끄고, 탑다운 카메라만 활성화
+    // → 블루프린트를 안 건드려도 탑다운 시점이 화면 카메라로 잡힘
+    if (TopDownCamera)
+    {
+        TArray<UCameraComponent*> Cameras;
+        GetComponents<UCameraComponent>(Cameras);
+        for (UCameraComponent* Cam : Cameras)
+        {
+            Cam->SetActive(Cam == TopDownCamera);
+        }
+
+        if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        {
+            PC->SetViewTargetWithBlend(this, 0.0f);
+        }
+    }
     
     controller = Cast<APlayerController>(GetController());
 
@@ -50,7 +100,61 @@ void AMyPlayer::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
+    // 게임패드 / 터치 중 더 크게 입력된 쪽을 사용 (둘 다 지원)
+    const FVector2D Move = (TouchMove.SizeSquared() > GamepadMove.SizeSquared()) ? TouchMove : GamepadMove;
+    const FVector2D Aim = (TouchAim.SizeSquared() > GamepadAim.SizeSquared()) ? TouchAim : GamepadAim;
+
+    UpdateMovement(DeltaTime, Move);
+    UpdateAimAndAttack(DeltaTime, Aim, Move);
 }
+
+void AMyPlayer::UpdateMovement(float DeltaTime, const FVector2D& Move)
+{
+    if (Move.SizeSquared() <= InputDeadzone * InputDeadzone)
+    {
+        return;
+    }
+
+    // 카메라가 고정(yaw 0)이므로 월드축 기준: 스틱 위(+Y) = 화면 위(+X), 스틱 오른쪽(+X) = +Y
+    AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Move.Y);
+    AddMovementInput(FVector(0.0f, 1.0f, 0.0f), Move.X);
+}
+
+void AMyPlayer::UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const FVector2D& Move)
+{
+    const bool bAiming = Aim.SizeSquared() > InputDeadzone * InputDeadzone;
+
+    // 조준 중이면 조준 방향, 아니면 이동 방향을 바라봄
+    const FVector2D Face = bAiming ? Aim : Move;
+
+    if (Face.SizeSquared() > InputDeadzone * InputDeadzone)
+    {
+        const FVector FaceDir(Face.Y, Face.X, 0.0f); // 이동과 동일한 축 매핑
+        const FRotator TargetRot(0.0f, FaceDir.Rotation().Yaw, 0.0f);
+        const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, TurnInterpSpeed);
+        SetActorRotation(NewRot);
+    }
+
+    // 조준 중에는 일정 간격으로 자동 공격
+    TimeSinceLastAttack += DeltaTime;
+    if (bAiming && TimeSinceLastAttack >= AttackInterval)
+    {
+        TimeSinceLastAttack = 0.0f;
+        if (AttackMontage)
+        {
+            // 몽타주의 노티파이가 OnNotifyBeginReceived -> hit() 을 호출함
+            PlayAnimMontage(AttackMontage);
+        }
+    }
+}
+
+void AMyPlayer::OnMoveX(float Value) { GamepadMove.X = Value; }
+void AMyPlayer::OnMoveY(float Value) { GamepadMove.Y = Value; }
+void AMyPlayer::OnAimX(float Value) { GamepadAim.X = Value; }
+void AMyPlayer::OnAimY(float Value) { GamepadAim.Y = Value; }
+
+void AMyPlayer::SetMoveInput(FVector2D Value) { TouchMove = Value; }
+void AMyPlayer::SetAimInput(FVector2D Value) { TouchAim = Value; }
 
 void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
 {
@@ -62,6 +166,12 @@ void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+    // 게임패드: 별도 에셋 없이 아날로그 스틱 키에 직접 바인딩
+    // (왼쪽 스틱 = 이동, 오른쪽 스틱 = 조준+공격)
+    PlayerInputComponent->BindAxisKey(EKeys::Gamepad_LeftX, this, &AMyPlayer::OnMoveX);
+    PlayerInputComponent->BindAxisKey(EKeys::Gamepad_LeftY, this, &AMyPlayer::OnMoveY);
+    PlayerInputComponent->BindAxisKey(EKeys::Gamepad_RightX, this, &AMyPlayer::OnAimX);
+    PlayerInputComponent->BindAxisKey(EKeys::Gamepad_RightY, this, &AMyPlayer::OnAimY);
 }
 
 void AMyPlayer::AddMoney()

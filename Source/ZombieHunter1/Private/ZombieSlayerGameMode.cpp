@@ -59,7 +59,6 @@ void AZombieSlayerGameMode::initEnemy(int index)
     if (newEnemy)
     {
         enemyPool.Add(newEnemy);  // 풀에 추가
-
         newEnemy->SetActorHiddenInGame(true);  // 비활성화
     }
 }

@@ -4,9 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "MyCanvas.h" 
+#include "MyCanvas.h"
 #include "MyPlayer.generated.h"
 
+class USpringArmComponent;
+class UCameraComponent;
+class UAnimMontage;
 
 UCLASS()
 class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
@@ -17,6 +20,31 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 	AActor* playerStart;
 
 	bool hit();
+
+	/** 비스듬한 탑다운 카메라 암 (BP의 기존 CameraBoom과 이름 충돌 방지) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TopDown|Camera", meta = (AllowPrivateAccess = "true"))
+	USpringArmComponent* TopDownBoom;
+
+	/** 탑다운 카메라 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TopDown|Camera", meta = (AllowPrivateAccess = "true"))
+	UCameraComponent* TopDownCamera;
+
+	// 입력 누적값 (게임패드 / 터치를 분리 저장 후 Tick에서 합성)
+	FVector2D GamepadMove = FVector2D::ZeroVector;
+	FVector2D GamepadAim = FVector2D::ZeroVector;
+	FVector2D TouchMove = FVector2D::ZeroVector;
+	FVector2D TouchAim = FVector2D::ZeroVector;
+
+	float TimeSinceLastAttack = 0.0f;
+
+	// 게임패드 아날로그 축 콜백
+	void OnMoveX(float Value);
+	void OnMoveY(float Value);
+	void OnAimX(float Value);
+	void OnAimY(float Value);
+
+	void UpdateMovement(float DeltaTime, const FVector2D& Move);
+	void UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const FVector2D& Move);
 
 
 public:
@@ -79,5 +107,45 @@ public:
 
 	void ReStart();
 	void SetMoney(int Money);
+
+	//////////////////////////////////////////////////////////////////////////
+	// 탑다운 트윈스틱 설정 / 입력
+
+	/** 카메라 내려보는 각도(피치). 음수일수록 위에서 내려봄 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Camera")
+	float CameraPitch = -55.0f;
+
+	/** 카메라 거리(암 길이) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Camera")
+	float CameraDistance = 900.0f;
+
+	/** 스틱 입력 데드존 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Input")
+	float InputDeadzone = 0.25f;
+
+	/** 캐릭터가 조준/이동 방향으로 회전하는 속도 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Movement")
+	float TurnInterpSpeed = 12.0f;
+
+	/** 조준 중 자동 공격 간격(초) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Combat")
+	float AttackInterval = 0.4f;
+
+	/** 공격 시 재생할 몽타주. 노티파이가 기존 hit()을 호출 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Combat")
+	UAnimMontage* AttackMontage = nullptr;
+
+	/** 모바일 터치 가상 조이스틱(왼쪽: 이동)이 매 프레임 호출 */
+	UFUNCTION(BlueprintCallable, Category = "TopDown|Input")
+	void SetMoveInput(FVector2D Value);
+
+	/** 모바일 터치 가상 조이스틱(오른쪽: 조준+공격)이 매 프레임 호출 */
+	UFUNCTION(BlueprintCallable, Category = "TopDown|Input")
+	void SetAimInput(FVector2D Value);
+
+	/** Returns TopDownBoom subobject */
+	FORCEINLINE USpringArmComponent* GetTopDownBoom() const { return TopDownBoom; }
+	/** Returns TopDownCamera subobject */
+	FORCEINLINE UCameraComponent* GetTopDownCamera() const { return TopDownCamera; }
 
 };
