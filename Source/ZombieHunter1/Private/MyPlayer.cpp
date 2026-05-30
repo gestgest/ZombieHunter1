@@ -14,6 +14,9 @@
 #include "GameFramework/CharacterMovementComponent.h" //GetCharacterMovement
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
+#include "NavigationInvokerComponent.h"
+#include "InfiniteMapGenerator.h"
+#include "EngineUtils.h" //TActorIterator
 
 
 
@@ -44,6 +47,11 @@ AMyPlayer::AMyPlayer()
 	TopDownCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 	TopDownCamera->SetupAttachment(TopDownBoom, USpringArmComponent::SocketName);
 	TopDownCamera->bUsePawnControlRotation = false;
+
+	// NavMesh 동적 생성 인보커: 플레이어 주변에만 NavMesh를 깔고, 멀어지면 제거.
+	// 무한 청크 맵의 시야 범위(약 ViewRadius*ChunkSize)를 덮도록 반경 설정.
+	NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
+	NavInvoker->SetGenerationRadii(7000.0f, 9000.0f);
 }
 
 // Called when the game starts or when spawned
@@ -77,7 +85,35 @@ void AMyPlayer::BeginPlay()
         }
     }
     
+    // 무한 맵 생성기 자동 스폰: 레벨에 수동 배치하지 않아도 됨.
+    // (이미 레벨에 배치돼 있으면 그쪽을 쓰고 중복 스폰하지 않음)
+    if (UWorld* World = GetWorld())
+    {
+        bool bHasGenerator = false;
+        for (TActorIterator<AInfiniteMapGenerator> It(World); It; ++It)
+        {
+            bHasGenerator = true;
+            break;
+        }
+        if (!bHasGenerator)
+        {
+            FActorSpawnParameters SpawnParams;
+            SpawnParams.Owner = this;
+            World->SpawnActor<AInfiniteMapGenerator>(
+                AInfiniteMapGenerator::StaticClass(), FTransform::Identity, SpawnParams);
+        }
+    }
+
     controller = Cast<APlayerController>(GetController());
+
+    // 탑다운: 컨트롤러 yaw를 0으로 고정하고 마우스 Look 입력을 무시한다.
+    // → BP의 "컨트롤 회전 기준 이동"이 월드축(+X/+Y) 고정 이동과 동일해지고,
+    //   마우스 때문에 직진이 휘는 yaw 드리프트도 사라진다. (카메라는 절대회전이라 무관)
+    if (controller)
+    {
+        controller->SetControlRotation(FRotator(0.0f, 0.0f, 0.0f));
+        controller->SetIgnoreLookInput(true);
+    }
 
     if (AGameModeBase* gameMode = GetWorld()->GetAuthGameMode())
     {
@@ -152,6 +188,14 @@ void AMyPlayer::OnMoveX(float Value) { GamepadMove.X = Value; }
 void AMyPlayer::OnMoveY(float Value) { GamepadMove.Y = Value; }
 void AMyPlayer::OnAimX(float Value) { GamepadAim.X = Value; }
 void AMyPlayer::OnAimY(float Value) { GamepadAim.Y = Value; }
+
+void AMyPlayer::MoveTopDown(FVector2D Value)
+{
+    // 카메라가 yaw 0으로 고정(월드 +X를 바라봄)이므로 컨트롤러 회전을 무시하고 월드축으로 이동.
+    // UpdateMovement(게임패드)와 동일한 매핑: 스틱/키 위(+Y) = 화면 위(+X), 오른쪽(+X) = +Y
+    AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value.Y);
+    AddMovementInput(FVector(0.0f, 1.0f, 0.0f), Value.X);
+}
 
 void AMyPlayer::SetMoveInput(FVector2D Value) { TouchMove = Value; }
 void AMyPlayer::SetAimInput(FVector2D Value) { TouchAim = Value; }

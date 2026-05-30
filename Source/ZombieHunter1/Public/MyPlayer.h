@@ -10,6 +10,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UAnimMontage;
+class UNavigationInvokerComponent;
 
 UCLASS()
 class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
@@ -28,6 +29,10 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 	/** 탑다운 카메라 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TopDown|Camera", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* TopDownCamera;
+
+	/** NavMesh를 플레이어 주변에만 동적으로 생성시키는 인보커 (무한 맵용) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TopDown|Navigation", meta = (AllowPrivateAccess = "true"))
+	UNavigationInvokerComponent* NavInvoker;
 
 	// 입력 누적값 (게임패드 / 터치를 분리 저장 후 Tick에서 합성)
 	FVector2D GamepadMove = FVector2D::ZeroVector;
@@ -113,7 +118,7 @@ public:
 
 	/** 카메라 내려보는 각도(피치). 음수일수록 위에서 내려봄 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Camera")
-	float CameraPitch = -55.0f;
+	float CameraPitch = -35.0f;
 
 	/** 카메라 거리(암 길이) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Camera")
@@ -134,6 +139,11 @@ public:
 	/** 공격 시 재생할 몽타주. 노티파이가 기존 hit()을 호출 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Combat")
 	UAnimMontage* AttackMontage = nullptr;
+
+	/** 키보드(WASD) Enhanced Input(IA_Move)에서 호출. 카메라가 고정된 월드축 기준으로 이동
+	 *  (컨트롤러 회전을 타지 않아 탑다운 카메라와 항상 일치). Triggered 이벤트에 연결할 것. */
+	UFUNCTION(BlueprintCallable, Category = "TopDown|Input")
+	void MoveTopDown(FVector2D Value);
 
 	/** 모바일 터치 가상 조이스틱(왼쪽: 이동)이 매 프레임 호출 */
 	UFUNCTION(BlueprintCallable, Category = "TopDown|Input")
