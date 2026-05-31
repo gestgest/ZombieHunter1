@@ -23,7 +23,7 @@
 // Sets default values
 AMyPlayer::AMyPlayer()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+ 	// Tick() 업데이트 키는 변수
 	PrimaryActorTick.bCanEverTick = true;
 
 	// 컨트롤러 회전이 캐릭터를 돌리지 않게 함 (조준 방향으로 직접 회전시킴)
@@ -48,7 +48,7 @@ AMyPlayer::AMyPlayer()
 	TopDownCamera->SetupAttachment(TopDownBoom, USpringArmComponent::SocketName);
 	TopDownCamera->bUsePawnControlRotation = false;
 
-	// NavMesh 동적 생성 인보커: 플레이어 주변에만 NavMesh를 깔고, 멀어지면 제거.
+	// NavMesh 동적 생성 : 플레이어 주변에만 NavMesh를 깔고, 멀어지면 제거.
 	// 무한 청크 맵의 시야 범위(약 ViewRadius*ChunkSize)를 덮도록 반경 설정.
 	NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
 	NavInvoker->SetGenerationRadii(7000.0f, 9000.0f);
@@ -189,6 +189,7 @@ void AMyPlayer::OnMoveY(float Value) { GamepadMove.Y = Value; }
 void AMyPlayer::OnAimX(float Value) { GamepadAim.X = Value; }
 void AMyPlayer::OnAimY(float Value) { GamepadAim.Y = Value; }
 
+//모바일용
 void AMyPlayer::MoveTopDown(FVector2D Value)
 {
     // 카메라가 yaw 0으로 고정(월드 +X를 바라봄)이므로 컨트롤러 회전을 무시하고 월드축으로 이동.

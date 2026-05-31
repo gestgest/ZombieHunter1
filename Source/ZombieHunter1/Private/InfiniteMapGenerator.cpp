@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "InfiniteMapGenerator.h"
 #include "Engine/StaticMeshActor.h"
@@ -8,13 +8,17 @@
 #include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
 
+
+//초기
 AInfiniteMapGenerator::AInfiniteMapGenerator()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
+
+
 	// 기본 메시 자동 지정 (엔진 기본 도형은 항상 존재하고 한 변이 정확히 100cm).
-	// 에디터에서 다른 메시로 바꾸고 싶으면 Details에서 덮어쓰면 됨.
+	// 바닥을 생성하고 나서 위의 오브젝트들
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	if (CubeFinder.Succeeded())
 	{
@@ -32,6 +36,7 @@ AInfiniteMapGenerator::AInfiniteMapGenerator()
 		ObstacleMeshes.Add(ConeFinder.Object);
 	}
 
+
 	// 바닥 머티리얼(있으면): 프로젝트의 프로토타입 그리드
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GridMatFinder(TEXT("/Game/LevelPrototyping/Materials/MI_PrototypeGrid_Gray.MI_PrototypeGrid_Gray"));
 	if (GridMatFinder.Succeeded())
@@ -44,15 +49,18 @@ void AInfiniteMapGenerator::BeginPlay()
 {
 	Super::BeginPlay();
 
+	//플레이어를 가져와라
 	TrackedPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	if (TrackedPawn)
 	{
-		const FIntPoint Center = WorldToChunk(TrackedPawn->GetActorLocation());
+		const FIntPoint Center = WorldToChunk(TrackedPawn->GetActorLocation()); //벡터값 가져오기
 		UpdateChunks(Center);
 		LastPlayerChunk = Center;
 		bHasGenerated = true;
 	}
 }
+
+
 
 void AInfiniteMapGenerator::Tick(float DeltaTime)
 {
@@ -65,7 +73,7 @@ void AInfiniteMapGenerator::Tick(float DeltaTime)
 	}
 	TimeSinceUpdate = 0.f;
 
-	// 플레이어가 늦게 스폰되는 경우 대비해 재확보
+	//BeginPlay보다 빠르게 Tick 함수가 호출되는 경우 대비
 	if (!TrackedPawn)
 	{
 		TrackedPawn = UGameplayStatics::GetPlayerPawn(this, 0);
@@ -76,7 +84,7 @@ void AInfiniteMapGenerator::Tick(float DeltaTime)
 	}
 
 	const FIntPoint Center = WorldToChunk(TrackedPawn->GetActorLocation());
-	if (!bHasGenerated || Center != LastPlayerChunk)
+	if (!bHasGenerated || Center != LastPlayerChunk) //전 청크와 내 청크가 다르다면
 	{
 		UpdateChunks(Center);
 		LastPlayerChunk = Center;
@@ -84,6 +92,7 @@ void AInfiniteMapGenerator::Tick(float DeltaTime)
 	}
 }
 
+//내 위치의 청크 반환
 FIntPoint AInfiniteMapGenerator::WorldToChunk(const FVector& WorldLocation) const
 {
 	const float Size = FMath::Max(1.f, ChunkSize);
@@ -93,14 +102,14 @@ FIntPoint AInfiniteMapGenerator::WorldToChunk(const FVector& WorldLocation) cons
 
 void AInfiniteMapGenerator::UpdateChunks(const FIntPoint& Center)
 {
-	// 1) 필요한 청크 집합 계산
-	TSet<FIntPoint> Needed;
-	Needed.Reserve((2 * ViewRadiusInChunks + 1) * (2 * ViewRadiusInChunks + 1));
+	// 1) 필요한 청크 집합 계산 7x7 
+	TSet<FIntPoint> needed;
+	needed.Reserve((2 * ViewRadiusInChunks + 1) * (2 * ViewRadiusInChunks + 1));
 	for (int32 dx = -ViewRadiusInChunks; dx <= ViewRadiusInChunks; ++dx)
 	{
 		for (int32 dy = -ViewRadiusInChunks; dy <= ViewRadiusInChunks; ++dy)
 		{
-			Needed.Add(FIntPoint(Center.X + dx, Center.Y + dy));
+			needed.Add(FIntPoint(Center.X + dx, Center.Y + dy));
 		}
 	}
 
@@ -108,7 +117,7 @@ void AInfiniteMapGenerator::UpdateChunks(const FIntPoint& Center)
 	TArray<FIntPoint> ToUnload;
 	for (const TPair<FIntPoint, FMapChunk>& Pair : LoadedChunks)
 	{
-		if (!Needed.Contains(Pair.Key))
+		if (!needed.Contains(Pair.Key))
 		{
 			ToUnload.Add(Pair.Key);
 		}
@@ -119,7 +128,7 @@ void AInfiniteMapGenerator::UpdateChunks(const FIntPoint& Center)
 	}
 
 	// 3) 새로 들어온 청크 생성
-	for (const FIntPoint& Coord : Needed)
+	for (const FIntPoint& Coord : needed)
 	{
 		if (!LoadedChunks.Contains(Coord))
 		{
@@ -128,6 +137,7 @@ void AInfiniteMapGenerator::UpdateChunks(const FIntPoint& Center)
 	}
 }
 
+//언로드. Destroy로 제거한다.
 void AInfiniteMapGenerator::UnloadChunk(const FIntPoint& Coord)
 {
 	if (FMapChunk* Chunk = LoadedChunks.Find(Coord))
@@ -200,6 +210,7 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 	LoadedChunks.Add(Coord, MoveTemp(Chunk));
 }
 
+//오브젝트 배치라고 생각하면 됨
 AStaticMeshActor* AInfiniteMapGenerator::SpawnMeshActor(UStaticMesh* Mesh, const FVector& Location,
 	const FRotator& Rotation, const FVector& Scale, UMaterialInterface* OverrideMat)
 {
