@@ -17,6 +17,8 @@
 #include "NavigationInvokerComponent.h"
 #include "InfiniteMapGenerator.h"
 #include "EngineUtils.h" //TActorIterator
+#include "VirtualJoystick.h"
+#include "Engine/Engine.h" //GEngine 화면 디버그
 
 
 
@@ -115,6 +117,9 @@ void AMyPlayer::BeginPlay()
         controller->SetIgnoreLookInput(true);
     }
 
+    // 터치 조이스틱 자동 생성 (위젯 BP 없이 C++가 만들어 화면에 띄움)
+    CreateTouchJoysticks();
+
     if (AGameModeBase* gameMode = GetWorld()->GetAuthGameMode())
     {
          playerStart = gameMode->FindPlayerStart(controller);
@@ -200,6 +205,67 @@ void AMyPlayer::MoveTopDown(FVector2D Value)
 
 void AMyPlayer::SetMoveInput(FVector2D Value) { TouchMove = Value; }
 void AMyPlayer::SetAimInput(FVector2D Value) { TouchAim = Value; }
+
+void AMyPlayer::OnMoveJoystickMoved(FVector2D Value) { SetMoveInput(Value); }
+void AMyPlayer::OnAimJoystickMoved(FVector2D Value) { SetAimInput(Value); }
+
+void AMyPlayer::CreateTouchJoysticks()
+{
+    if (!bCreateTouchJoysticks)
+    {
+        return;
+    }
+
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!PC)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, TEXT("[Joystick] PlayerController 없음 - 생성 실패"));
+        }
+        return;
+    }
+
+    // 뷰포트 크기를 받아 화면 안 절대 좌표로 배치 (음수/앵커 해석 모호함 제거)
+    int32 ViewX = 1280;
+    int32 ViewY = 720;
+    PC->GetViewportSize(ViewX, ViewY);
+
+    const float Size = 220.f;       // 조이스틱 한 변(베이스 크기와 동일)
+    const float Margin = 80.f;      // 화면 가장자리 여백
+    const float PosY = ViewY - Size - Margin;          // 아래쪽
+    const float LeftX = Margin;                        // 좌하단
+    const float RightX = ViewX - Size - Margin;        // 우하단
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green,
+            FString::Printf(TEXT("[Joystick] 실행됨 viewport=%dx%d  L=(%.0f,%.0f) R=(%.0f,%.0f)"),
+                ViewX, ViewY, LeftX, PosY, RightX, PosY));
+    }
+
+    // 왼쪽: 이동 조이스틱 (화면 좌하단)
+    MoveJoystick = CreateWidget<UVirtualJoystick>(PC, UVirtualJoystick::StaticClass());
+    if (MoveJoystick)
+    {
+        MoveJoystick->BackgroundTexture = JoystickBackgroundTexture;
+        MoveJoystick->HandleTexture = JoystickHandleTexture;
+        MoveJoystick->OnJoystickMoved.AddDynamic(this, &AMyPlayer::OnMoveJoystickMoved);
+        MoveJoystick->AddToViewport(10);
+        MoveJoystick->SetPositionInViewport(FVector2D(LeftX, PosY), false);
+    }
+
+    // 오른쪽: 조준 조이스틱 (화면 우하단)
+    AimJoystick = CreateWidget<UVirtualJoystick>(PC, UVirtualJoystick::StaticClass());
+    if (AimJoystick)
+    {
+        AimJoystick->BackgroundTexture = JoystickBackgroundTexture;
+        AimJoystick->HandleTexture = JoystickHandleTexture;
+        AimJoystick->OnJoystickMoved.AddDynamic(this, &AMyPlayer::OnAimJoystickMoved);
+        AimJoystick->AddToViewport(10);
+        AimJoystick->SetPositionInViewport(FVector2D(RightX, PosY), false);
+    }
+}
 
 void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
 {

@@ -11,6 +11,8 @@ class USpringArmComponent;
 class UCameraComponent;
 class UAnimMontage;
 class UNavigationInvokerComponent;
+class UVirtualJoystick;
+class UTexture2D;
 
 UCLASS()
 class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
@@ -50,6 +52,20 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 
 	void UpdateMovement(float DeltaTime, const FVector2D& Move);
 	void UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const FVector2D& Move);
+
+	// C++에서 생성하는 터치 조이스틱 인스턴스
+	UPROPERTY()
+	UVirtualJoystick* MoveJoystick;
+	UPROPERTY()
+	UVirtualJoystick* AimJoystick;
+
+	void CreateTouchJoysticks();
+
+	// 조이스틱 델리게이트 콜백 (→ SetMoveInput / SetAimInput 로 연결)
+	UFUNCTION()
+	void OnMoveJoystickMoved(FVector2D Value);
+	UFUNCTION()
+	void OnAimJoystickMoved(FVector2D Value);
 
 
 public:
@@ -152,6 +168,21 @@ public:
 	/** 모바일 터치 가상 조이스틱(오른쪽: 조준+공격)이 매 프레임 호출 */
 	UFUNCTION(BlueprintCallable, Category = "TopDown|Input")
 	void SetAimInput(FVector2D Value);
+
+	//////////////////////////////////////////////////////////////////////////
+	// 터치 조이스틱 (C++가 자동 생성해서 화면에 띄움 — 위젯 BP 불필요)
+
+	/** 켜면 게임 시작 시 좌/우 가상 조이스틱을 자동 생성해 화면에 표시 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Touch")
+	bool bCreateTouchJoysticks = true;
+
+	/** (선택) 조이스틱 베이스 텍스처. 비우면 반투명 박스로 표시 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Touch")
+	UTexture2D* JoystickBackgroundTexture = nullptr;
+
+	/** (선택) 조이스틱 손잡이 텍스처. 비우면 반투명 박스로 표시 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Touch")
+	UTexture2D* JoystickHandleTexture = nullptr;
 
 	/** Returns TopDownBoom subobject */
 	FORCEINLINE USpringArmComponent* GetTopDownBoom() const { return TopDownBoom; }

@@ -16,7 +16,6 @@ AInfiniteMapGenerator::AInfiniteMapGenerator()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
 
-
 	// 기본 메시 자동 지정 (엔진 기본 도형은 항상 존재하고 한 변이 정확히 100cm).
 	// 바닥을 생성하고 나서 위의 오브젝트들
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
