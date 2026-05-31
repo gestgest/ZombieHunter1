@@ -115,6 +115,13 @@ void AMyPlayer::BeginPlay()
     {
         controller->SetControlRotation(FRotator(0.0f, 0.0f, 0.0f));
         controller->SetIgnoreLookInput(true);
+
+        // 마우스 커서 표시 + 게임/UI 동시 입력 (데스크탑에서 마우스로 조이스틱 조작)
+        controller->bShowMouseCursor = true;
+        FInputModeGameAndUI InputMode;
+        InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+        InputMode.SetHideCursorDuringCapture(false);
+        controller->SetInputMode(InputMode);
     }
 
     // 터치 조이스틱 자동 생성 (위젯 BP 없이 C++가 만들어 화면에 띄움)
@@ -252,7 +259,8 @@ void AMyPlayer::CreateTouchJoysticks()
         MoveJoystick->HandleTexture = JoystickHandleTexture;
         MoveJoystick->OnJoystickMoved.AddDynamic(this, &AMyPlayer::OnMoveJoystickMoved);
         MoveJoystick->AddToViewport(10);
-        MoveJoystick->SetPositionInViewport(FVector2D(LeftX, PosY), false);
+        // true = 픽셀 좌표를 넣으면 DPI 스케일을 알아서 적용 (PIE DPI≠1 대응)
+        MoveJoystick->SetPositionInViewport(FVector2D(LeftX, PosY), true);
     }
 
     // 오른쪽: 조준 조이스틱 (화면 우하단)
@@ -263,7 +271,7 @@ void AMyPlayer::CreateTouchJoysticks()
         AimJoystick->HandleTexture = JoystickHandleTexture;
         AimJoystick->OnJoystickMoved.AddDynamic(this, &AMyPlayer::OnAimJoystickMoved);
         AimJoystick->AddToViewport(10);
-        AimJoystick->SetPositionInViewport(FVector2D(RightX, PosY), false);
+        AimJoystick->SetPositionInViewport(FVector2D(RightX, PosY), true);
     }
 }
 
@@ -341,9 +349,14 @@ bool AMyPlayer::checkDead()
         
         if (controller)
         {
-            //3인칭
-            controller->bShowMouseCursor = false;
-            controller->SetInputMode(FInputModeGameOnly());
+            // 마우스 커서를 보이게 하고, 게임+UI 입력 모드로 둠
+            // → 데스크탑에서 마우스로 조이스틱을 조작할 수 있고 커서도 보임
+            controller->bShowMouseCursor = true;
+
+            FInputModeGameAndUI InputMode;
+            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+            InputMode.SetHideCursorDuringCapture(false);
+            controller->SetInputMode(InputMode);
         }
 
     }
