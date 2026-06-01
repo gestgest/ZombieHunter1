@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "VirtualJoystick.h"
 #include "Components/Image.h"
@@ -11,20 +11,25 @@ TSharedRef<SWidget> UVirtualJoystick::RebuildWidget()
 	// 위젯 블루프린트 없이 C++에서 트리를 직접 구성 (RootWidget이 비어있을 때만)
 	if (WidgetTree && !WidgetTree->RootWidget)
 	{
+		//캔버스 생성
 		UOverlay* RootOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("RootOverlay"));
 		WidgetTree->RootWidget = RootOverlay;
 
+		//배경 만들기
 		JoystickBackground = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("JoystickBackground"));
 		if (UOverlaySlot* BgSlot = RootOverlay->AddChildToOverlay(JoystickBackground))
 		{
+			//layout
 			BgSlot->SetHorizontalAlignment(HAlign_Center);
 			BgSlot->SetVerticalAlignment(VAlign_Center);
 		}
 
+		//핸들링 만들기
 		JoystickHandle = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("JoystickHandle"));
 		if (UOverlaySlot* HandleSlot = RootOverlay->AddChildToOverlay(JoystickHandle))
 		{
-			HandleSlot->SetHorizontalAlignment(HAlign_Center);
+			//layout
+			HandleSlot->SetHorizontalAlignment(HAlign_Center); 
 			HandleSlot->SetVerticalAlignment(VAlign_Center);
 		}
 	}
