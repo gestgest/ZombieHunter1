@@ -16,8 +16,10 @@ TSharedRef<SWidget> UVirtualJoystick::RebuildWidget()
 		WidgetTree->RootWidget = RootOverlay;
 
 		//배경 만들기
-		JoystickBackground = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("JoystickBackground"));
-		if (UOverlaySlot* BgSlot = RootOverlay->AddChildToOverlay(JoystickBackground))
+		Background = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("JoystickBackground"));
+
+		//중앙에 넣어라
+		if (UOverlaySlot* BgSlot = RootOverlay->AddChildToOverlay(Background))
 		{
 			//layout
 			BgSlot->SetHorizontalAlignment(HAlign_Center);
@@ -25,8 +27,10 @@ TSharedRef<SWidget> UVirtualJoystick::RebuildWidget()
 		}
 
 		//핸들링 만들기
-		JoystickHandle = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("JoystickHandle"));
-		if (UOverlaySlot* HandleSlot = RootOverlay->AddChildToOverlay(JoystickHandle))
+		Handle = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("JoystickHandle"));
+
+		//중앙에 넣어라
+		if (UOverlaySlot* HandleSlot = RootOverlay->AddChildToOverlay(Handle))
 		{
 			//layout
 			HandleSlot->SetHorizontalAlignment(HAlign_Center); 
@@ -43,47 +47,6 @@ void UVirtualJoystick::NativeConstruct()
 
 	// 위젯 전체가 터치/마우스를 받도록
 	SetVisibility(ESlateVisibility::Visible);
-	ApplyImageBrushes();
-}
-
-void UVirtualJoystick::ApplyImageBrushes()
-{
-	if (JoystickBackground)
-	{
-		JoystickBackground->SetBrush(MakeBrush(BackgroundTexture, BackgroundSize, FLinearColor(1.f, 1.f, 1.f, 0.30f)));
-		// 배경이 클릭/터치를 받는 영역 (Visible 이어야 입력이 위젯에 들어옴)
-		JoystickBackground->SetVisibility(ESlateVisibility::Visible);
-	}
-
-	if (JoystickHandle)
-	{
-		JoystickHandle->SetBrush(MakeBrush(HandleTexture, HandleSize, FLinearColor(1.f, 1.f, 1.f, 0.60f)));
-		// 손잡이는 입력을 가로채지 않도록 (배경이 처리)
-		JoystickHandle->SetVisibility(ESlateVisibility::HitTestInvisible);
-	}
-}
-
-FSlateBrush UVirtualJoystick::MakeBrush(UTexture2D* Texture, const FVector2D& Size, const FLinearColor& FallbackTint) const
-{
-	FSlateBrush Brush;
-	Brush.ImageSize = Size;
-
-	if (Texture)
-	{
-		// 텍스처가 있으면 이미지로 그림
-		Brush.SetResourceObject(Texture);
-		Brush.DrawAs = ESlateBrushDrawType::Image;
-		Brush.TintColor = FSlateColor(FLinearColor::White);
-	}
-	else
-	{
-		// 텍스처가 없어도 보이도록 단색 둥근 박스(원형)로 그림
-		Brush.DrawAs = ESlateBrushDrawType::RoundedBox;
-		Brush.TintColor = FSlateColor(FallbackTint);
-		Brush.OutlineSettings.RoundingType = ESlateBrushRoundingType::HalfHeightRadius;
-	}
-
-	return Brush;
 }
 
 float UVirtualJoystick::GetEffectiveRange() const
@@ -137,6 +100,19 @@ FReply UVirtualJoystick::NativeOnMouseButtonUp(const FGeometry& InGeometry, cons
 	return HandleReleased(InMouseEvent);
 }
 
+//조이스틱을 놓친다면
+void UVirtualJoystick::NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent)
+{
+	Super::NativeOnMouseCaptureLost(CaptureLostEvent);
+
+	// 어떤 경로로든 입력 캡처가 끝나면 무조건 손잡이를 중앙으로 되돌리고 (0,0)을 보냄
+	if (ActivePointerIndex != -1)
+	{
+		ActivePointerIndex = -1;
+		ResetHandle();
+	}
+}
+
 FReply UVirtualJoystick::HandlePressed(const FGeometry& InGeometry, const FPointerEvent& InEvent)
 {
 	// 이미 다른 손가락이 잡고 있으면 무시
@@ -184,9 +160,9 @@ void UVirtualJoystick::UpdateFromScreenPosition(const FGeometry& InGeometry, con
 	}
 
 	// 손잡이 위치 갱신 (시각 피드백)
-	if (JoystickHandle)
+	if (Handle)
 	{
-		JoystickHandle->SetRenderTranslation(Offset);
+		Handle->SetRenderTranslation(Offset);
 	}
 
 	// 정규화: 화면 Y는 아래가 +이므로 Y를 뒤집어 "위 = +" 로 맞춤 (게임패드 스틱과 동일)
@@ -203,9 +179,9 @@ void UVirtualJoystick::UpdateFromScreenPosition(const FGeometry& InGeometry, con
 
 void UVirtualJoystick::ResetHandle()
 {
-	if (JoystickHandle)
+	if (Handle)
 	{
-		JoystickHandle->SetRenderTranslation(FVector2D::ZeroVector);
+		Handle->SetRenderTranslation(FVector2D::ZeroVector);
 	}
 	OnJoystickMoved.Broadcast(FVector2D::ZeroVector);
 }

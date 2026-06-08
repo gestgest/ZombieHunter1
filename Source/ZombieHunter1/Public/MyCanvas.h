@@ -11,6 +11,8 @@
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "MyCanvas.generated.h"
 
+class UVirtualJoystick;
+
 UCLASS()
 class ZOMBIEHUNTER1_API UMyCanvas : public UUserWidget
 {
@@ -31,6 +33,13 @@ public:
 
     UPROPERTY(meta = (BindWidget))
     UButton* RestartButton;
+
+    // BP_Canvas에 배치한 조이스틱 인스턴스. 이름이 MoveJoystick / AimJoystick 이어야 자동 연결됨
+    UPROPERTY(meta = (BindWidgetOptional))
+    UVirtualJoystick* MoveJoystick;
+
+    UPROPERTY(meta = (BindWidgetOptional))
+    UVirtualJoystick* AimJoystick;
 
 
     //BlueprintCallable 함수들

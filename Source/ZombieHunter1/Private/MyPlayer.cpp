@@ -233,51 +233,28 @@ void AMyPlayer::CreateTouchJoysticks()
         return;
     }
 
-    // 뷰포트 크기를 받아 화면 안 절대 좌표로 배치 (음수/앵커 해석 모호함 제거)
-    int32 ViewX = 1280;
-    int32 ViewY = 720;
-    PC->GetViewportSize(ViewX, ViewY);
-
-    const float Size = 220.f;       // 조이스틱 한 변(베이스 크기와 동일)
-    const float Margin = 80.f;      // 화면 가장자리 여백
-    const float PosY = ViewY - Size - Margin;          // 아래쪽
-    const float LeftX = Margin;                        // 좌하단
-    const float RightX = ViewX - Size - Margin;        // 우하단
-
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green,
-            FString::Printf(TEXT("[Joystick] 실행됨 viewport=%dx%d  L=(%.0f,%.0f) R=(%.0f,%.0f)"),
-                ViewX, ViewY, LeftX, PosY, RightX, PosY));
-    }
-
-    // 왼쪽: 이동 조이스틱 (화면 좌하단)
-    MoveJoystick = CreateWidget<UVirtualJoystick>(PC, UVirtualJoystick::StaticClass());
-    if (MoveJoystick)
-    {
-        MoveJoystick->BackgroundTexture = JoystickBackgroundTexture;
-        MoveJoystick->HandleTexture = JoystickHandleTexture;
-        MoveJoystick->OnJoystickMoved.AddDynamic(this, &AMyPlayer::OnMoveJoystickMoved);
-        MoveJoystick->AddToViewport(10);
-        // true = 픽셀 좌표를 넣으면 DPI 스케일을 알아서 적용 (PIE DPI≠1 대응)
-        MoveJoystick->SetPositionInViewport(FVector2D(LeftX, PosY), true);
-    }
-
-    // 오른쪽: 조준 조이스틱 (화면 우하단)
-    AimJoystick = CreateWidget<UVirtualJoystick>(PC, UVirtualJoystick::StaticClass());
-    if (AimJoystick)
-    {
-        AimJoystick->BackgroundTexture = JoystickBackgroundTexture;
-        AimJoystick->HandleTexture = JoystickHandleTexture;
-        AimJoystick->OnJoystickMoved.AddDynamic(this, &AMyPlayer::OnAimJoystickMoved);
-        AimJoystick->AddToViewport(10);
-        AimJoystick->SetPositionInViewport(FVector2D(RightX, PosY), true);
-    }
+    //조이스틱
+    //OnMoveJoystickMoved
+    //OnAimJoystickMoved
 }
 
 void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
 {
     CanvasWidget = CW;
+
+    // 캔버스에 배치된 조이스틱의 입력을 내 콜백에 바인딩.
+    // (플레이어가 캔버스를 들고 있으므로 캔버스가 거꾸로 플레이어를 찾을 필요 없음)
+    if (CanvasWidget)
+    {
+        if (CanvasWidget->MoveJoystick)
+        {
+            CanvasWidget->MoveJoystick->OnJoystickMoved.AddUniqueDynamic(this, &AMyPlayer::OnMoveJoystickMoved);
+        }
+        if (CanvasWidget->AimJoystick)
+        {
+            CanvasWidget->AimJoystick->OnJoystickMoved.AddUniqueDynamic(this, &AMyPlayer::OnAimJoystickMoved);
+        }
+    }
 }
 
 // Called to bind functionality to input

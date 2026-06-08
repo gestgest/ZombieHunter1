@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -27,14 +27,6 @@ public:
 	/** 드래그할 때마다 정규화 벡터(-1~1, Y 위가 +)를 전달. 손가락을 떼면 (0,0)을 한 번 보냄 */
 	UPROPERTY(BlueprintAssignable, Category = "Joystick")
 	FOnJoystickMoved OnJoystickMoved;
-
-	/** 조이스틱 베이스(바깥 원) 텍스처. 비우면 반투명 박스로 표시 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Joystick")
-	TObjectPtr<UTexture2D> BackgroundTexture;
-
-	/** 손잡이(안쪽 원) 텍스처. 비우면 반투명 박스로 표시 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Joystick")
-	TObjectPtr<UTexture2D> HandleTexture;
 
 	/** 베이스 크기(px) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Joystick")
@@ -65,21 +57,21 @@ protected:
 	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
+	// 마우스/터치 캡처를 잃으면(손가락 떼거나 포커스 이탈) 반드시 손잡이를 0으로 리셋.
+	// (Up 이벤트가 위젯에 안 들어와도 마지막 입력이 남아 계속 움직이는 것 방지)
+	virtual void NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override;
+
 private:
 	/** 위젯 BP에서 같은 이름의 Image를 두면 자동 바인딩됨. 없으면 C++가 직접 생성 */
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> JoystickBackground;
+	TObjectPtr<UImage> Background;
 
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> JoystickHandle;
+	TObjectPtr<UImage> Handle;
 
 	/** 현재 이 조이스틱을 잡고 있는 포인터(손가락) 번호. -1이면 비활성 */
 	int32 ActivePointerIndex = -1;
 
-	/** 텍스처/색/크기를 이미지에 적용 */
-	void ApplyImageBrushes();
-	/** 텍스처가 있으면 이미지, 없으면 단색 원형 브러시를 생성 */
-	FSlateBrush MakeBrush(UTexture2D* Texture, const FVector2D& Size, const FLinearColor& FallbackTint) const;
 	/** 실제 사용할 손잡이 반경 */
 	float GetEffectiveRange() const;
 
