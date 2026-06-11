@@ -48,6 +48,12 @@ void AInfiniteMapGenerator::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// [디버그] 켜져 있으면 초기 생성도 안 함 (맵 없이 시작해 핑 비교용)
+	if (debugDisableGeneration)
+	{
+		return;
+	}
+
 	//플레이어를 가져와라
 	TrackedPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	if (TrackedPawn)
@@ -64,6 +70,12 @@ void AInfiniteMapGenerator::BeginPlay()
 void AInfiniteMapGenerator::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// [디버그] 맵 생성이 핑 원인인지 격리: 켜면 청크 갱신을 통째로 건너뜀
+	if (debugDisableGeneration)
+	{
+		return;
+	}
 
 	TimeSinceUpdate += DeltaTime;
 	if (TimeSinceUpdate < UpdateInterval)

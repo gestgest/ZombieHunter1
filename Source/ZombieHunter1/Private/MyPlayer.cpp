@@ -8,6 +8,7 @@
 #include "Components/InputComponent.h" //BindAxisKey
 #include "InputCoreTypes.h"            //EKeys
 #include "Kismet/GameplayStatics.h" //getCharacter, sound
+#include "Animation/AnimInstance.h" //SetRootMotionMode, ERootMotionMode
 
 
 #include "GameFramework/GameModeBase.h"
@@ -15,8 +16,6 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "NavigationInvokerComponent.h"
-#include "InfiniteMapGenerator.h"
-#include "EngineUtils.h" //TActorIterator
 #include "VirtualJoystick.h"
 #include "Engine/Engine.h" //GEngine 화면 디버그
 
@@ -86,25 +85,9 @@ void AMyPlayer::BeginPlay()
             PC->SetViewTargetWithBlend(this, 0.0f);
         }
     }
-    
-    // 무한 맵 생성기 자동 스폰: 레벨에 수동 배치하지 않아도 됨.
-    // (이미 레벨에 배치돼 있으면 그쪽을 쓰고 중복 스폰하지 않음)
-    if (UWorld* World = GetWorld())
-    {
-        bool bHasGenerator = false;
-        for (TActorIterator<AInfiniteMapGenerator> It(World); It; ++It)
-        {
-            bHasGenerator = true;
-            break;
-        }
-        if (!bHasGenerator)
-        {
-            FActorSpawnParameters SpawnParams;
-            SpawnParams.Owner = this;
-            World->SpawnActor<AInfiniteMapGenerator>(
-                AInfiniteMapGenerator::StaticClass(), FTransform::Identity, SpawnParams);
-        }
-    }
+
+    // 무한 맵 생성기는 레벨에 직접 배치해 사용한다(폰에서 스폰하지 않음).
+    // → 월드 생성 책임을 레벨/게임모드 쪽에 두고, Details 패널에서 설정·디버그.
 
     controller = Cast<APlayerController>(GetController());
 
@@ -139,6 +122,11 @@ void AMyPlayer::BeginPlay()
         animInstance->OnPlayMontageNotifyBegin.AddDynamic(
             this, &AMyPlayer::OnNotifyBeginReceived
         ); //신호
+
+        // 공격 몽타주의 루트 모션이 캐릭터 이동을 덮어써서 공격 중 못 움직이는 문제 해결.
+        // IgnoreRootMotion: 루트 모션을 추출해 메시는 제자리에 고정하되 이동에는 적용하지 않음.
+        // → 공격 중에도 AddMovementInput(이동 입력)이 그대로 캐릭터를 움직임.
+        animInstance->SetRootMotionMode(ERootMotionMode::IgnoreRootMotion);
     }
 
 }
@@ -147,6 +135,12 @@ void AMyPlayer::BeginPlay()
 void AMyPlayer::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
+
+    // 죽으면 이동/조준/공격 입력 처리를 멈춤 (죽은 뒤 공격 몽타주가 또 재생되는 것 방지)
+    if (HP <= 0)
+    {
+        return;
+    }
 
     // 게임패드 / 터치 중 더 크게 입력된 쪽을 사용 (둘 다 지원)
     const FVector2D Move = (TouchMove.SizeSquared() > GamepadMove.SizeSquared()) ? TouchMove : GamepadMove;
@@ -310,6 +304,9 @@ bool AMyPlayer::checkDead()
     bool isDead = this->HP <= 0;
     if (isDead)
     {
+        // 진행 중인 공격 몽타주를 즉시 끊어 슬롯을 비움 → ABP의 죽음 상태가 바로 재생됨
+        StopAnimMontage();
+
         GetCharacterMovement()->DisableMovement();
         CanvasWidget->SetVisRestartButton(true); //버튼 on
 
