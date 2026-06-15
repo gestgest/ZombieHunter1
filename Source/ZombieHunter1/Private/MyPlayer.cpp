@@ -18,6 +18,8 @@
 #include "NavigationInvokerComponent.h"
 #include "VirtualJoystick.h"
 #include "Engine/Engine.h" //GEngine 화면 디버그
+#include "JobComponent.h"
+#include "SwordsmanJob.h"
 
 
 
@@ -53,6 +55,9 @@ AMyPlayer::AMyPlayer()
 	// 무한 청크 맵의 시야 범위(약 ViewRadius*ChunkSize)를 덮도록 반경 설정.
 	NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
 	NavInvoker->SetGenerationRadii(7000.0f, 9000.0f);
+
+	// 기본 직업: 검사. 에디터(BP)에서 DefaultJobClass를 바꾸면 다른 직업으로 시작한다.
+	DefaultJobClass = USwordsmanJob::StaticClass();
 }
 
 // Called when the game starts or when spawned
@@ -129,6 +134,29 @@ void AMyPlayer::BeginPlay()
         animInstance->SetRootMotionMode(ERootMotionMode::IgnoreRootMotion);
     }
 
+    // 직업(Job) 컴포넌트 생성 — 시작 시 1개 고정.
+    if (!DefaultJobClass)
+    {
+        DefaultJobClass = USwordsmanJob::StaticClass();
+    }
+    CurrentJob = NewObject<UJobComponent>(this, DefaultJobClass);
+    if (CurrentJob)
+    {
+        CurrentJob->RegisterComponent();
+        CurrentJob->InitializeForOwner(this);
+
+        // 기존 BP_MyPlayer에 설정해 둔 값을 직업이 비어 있으면 승계 (검사 동작 보존).
+        // → 직업 BP/C++에 별도 값을 넣으면 그쪽이 우선.
+        if (!CurrentJob->AttackMontage)
+        {
+            CurrentJob->AttackMontage = AttackMontage;
+        }
+        if (!CurrentJob->AttackSound)
+        {
+            CurrentJob->AttackSound = AttackSound;
+        }
+        CurrentJob->Damage = Damage;
+    }
 }
 
 // Called every frame
@@ -177,15 +205,17 @@ void AMyPlayer::UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const 
         SetActorRotation(NewRot);
     }
 
-    // 조준 중에는 일정 간격으로 자동 공격
+    // 조준 중에는 일정 간격으로 자동 공격 (간격은 현재 직업이 결정)
+    const float Interval = CurrentJob ? CurrentJob->AttackInterval : AttackInterval;
     TimeSinceLastAttack += DeltaTime;
-    if (bAiming && TimeSinceLastAttack >= AttackInterval)
+    if (bAiming && TimeSinceLastAttack >= Interval)
     {
         TimeSinceLastAttack = 0.0f;
-        if (AttackMontage)
+        if (CurrentJob)
         {
-            // 몽타주의 노티파이가 OnNotifyBeginReceived -> hit() 을 호출함
-            PlayAnimMontage(AttackMontage);
+            // 직업이 공격을 수행(보통 몽타주 재생). 몽타주 노티파이가
+            // OnNotifyBeginReceived -> CurrentJob->OnAttackNotify() 로 실제 타격 판정.
+            CurrentJob->Attack();
         }
     }
 }
@@ -350,63 +380,9 @@ void AMyPlayer::ReStart()
 
 void AMyPlayer::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload)
 {
-
-    if (hit())
+    // 실제 타격 판정/사운드는 현재 직업이 담당한다 (검사: 근접 스윕, 궁수: 발사체 등).
+    if (CurrentJob)
     {
-        //사운드
-        if (AttackSound)
-        {
-            UGameplayStatics::PlaySoundAtLocation(
-                this,  // WorldContextObject
-                AttackSound,
-                GetActorLocation(),
-                1.0f,  // VolumeMultiplier
-                1.0f   // PitchMultiplier
-            );
-        }
+        CurrentJob->OnAttackNotify(NotifyName);
     }
-}
-
-bool AMyPlayer::hit()
-{
-    bool isAttack = false;
-
-    //여기에 함수 죄다 넣어야 함
-    TArray<FHitResult> hitResults;
-    FVector start = GetActorLocation();
-    FVector end = start + (GetActorForwardVector() * 150.0f);
-    float radius = 25.0f;
-
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(radius);
-    FCollisionQueryParams queryParams;
-    queryParams.AddIgnoredActor(this);
-
-    //SweepSingleByChanne
-    bool bHit = GetWorld()->SweepMultiByChannel(
-        hitResults,
-        start,
-        end,
-        FQuat::Identity,
-        ECC_Pawn, //TraceChannel
-        FCollisionShape::MakeSphere(radius),
-        queryParams
-    );
-
-    for (const FHitResult& hit : hitResults)
-    {
-        AEnemy* hitEnemy = Cast<AEnemy>(hit.GetActor());
-        if (hitEnemy)
-        {
-            UE_LOG(LogTemp, Log, TEXT("Hit Enemy!"));
-            hitEnemy->AddHP(-Damage);
-            FVector force = GetActorForwardVector() * 500 + FVector(0, 0, 100);
-            hitEnemy->LaunchCharacter(force, false, false);
-            isAttack = true;
-        }
-        else
-        {
-            UE_LOG(LogTemp, Log, TEXT("oh no!"));
-        }
-    }
-    return isAttack;
 }

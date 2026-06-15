@@ -13,6 +13,7 @@ class UAnimMontage;
 class UNavigationInvokerComponent;
 class UVirtualJoystick;
 class UTexture2D;
+class UJobComponent;
 
 UCLASS()
 class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
@@ -21,8 +22,6 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 	UMyCanvas* CanvasWidget;
 	APlayerController* controller;
 	AActor* playerStart;
-
-	bool hit();
 
 	/** 비스듬한 탑다운 카메라 암 (BP의 기존 CameraBoom과 이름 충돌 방지) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TopDown|Camera", meta = (AllowPrivateAccess = "true"))
@@ -152,9 +151,20 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Combat")
 	float AttackInterval = 0.4f;
 
-	/** 공격 시 재생할 몽타주. 노티파이가 기존 hit()을 호출 */
+	/** 공격 시 재생할 몽타주. 노티파이가 현재 직업의 OnAttackNotify()를 호출 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Combat")
 	UAnimMontage* AttackMontage = nullptr;
+
+	//////////////////////////////////////////////////////////////////////////
+	// 직업(Job) 시스템 — 시작 시 직업 1개를 생성해 부착한다.
+
+	/** 시작 시 부착할 직업 클래스(검사/궁수/힐러/마법사). 비우면 검사로 기본 설정. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job")
+	TSubclassOf<UJobComponent> DefaultJobClass;
+
+	/** 현재 부착된 직업 컴포넌트 (런타임 생성) */
+	UPROPERTY(BlueprintReadOnly, Category = "Job")
+	UJobComponent* CurrentJob = nullptr;
 
 	/** 키보드(WASD) Enhanced Input(IA_Move)에서 호출. 카메라가 고정된 월드축 기준으로 이동
 	 *  (컨트롤러 회전을 타지 않아 탑다운 카메라와 항상 일치). Triggered 이벤트에 연결할 것. */
