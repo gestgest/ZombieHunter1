@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "JobComponent.h"
+#include "Jobs/JobComponent.h"
 #include "SwordsmanJob.generated.h"
 
 /**

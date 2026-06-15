@@ -18,8 +18,8 @@
 #include "NavigationInvokerComponent.h"
 #include "VirtualJoystick.h"
 #include "Engine/Engine.h" //GEngine 화면 디버그
-#include "JobComponent.h"
-#include "SwordsmanJob.h"
+#include "Jobs/JobComponent.h"
+#include "Jobs/SwordsmanJob.h"
 
 
 
@@ -176,6 +176,12 @@ void AMyPlayer::Tick(float DeltaTime)
 
     UpdateMovement(DeltaTime, Move);
     UpdateAimAndAttack(DeltaTime, Aim, Move);
+
+    // 직업 패시브(힐러 자가 회복 등) — 살아있을 때만 (위에서 HP<=0이면 return)
+    if (CurrentJob)
+    {
+        CurrentJob->TickJob(DeltaTime);
+    }
 }
 
 void AMyPlayer::UpdateMovement(float DeltaTime, const FVector2D& Move)

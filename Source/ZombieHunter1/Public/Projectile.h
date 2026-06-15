@@ -32,6 +32,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
 	float KnockbackForce = 300.0f;
 
+	/** >0이면 적중 지점 주변 이 반경(cm) 안의 모든 적에게 피해(범위 폭발). 0이면 단일 대상. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
+	float ExplosionRadius = 0.0f;
+
 	/** 적중 시 재생할 사운드 (선택) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
 	USoundBase* HitSound = nullptr;
@@ -58,4 +62,7 @@ protected:
 	void OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 		bool bFromSweep, const FHitResult& SweepResult);
+
+	/** 적 하나에게 피해 + 폭발/발사 중심에서 바깥 방향으로 넉백 */
+	void ApplyHit(class AEnemy* Enemy);
 };

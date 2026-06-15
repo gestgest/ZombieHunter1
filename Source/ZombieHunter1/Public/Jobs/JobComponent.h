@@ -9,6 +9,7 @@
 class AMyPlayer;
 class UAnimMontage;
 class USoundBase;
+class AProjectile;
 
 /**
  * 직업(Job) 베이스 컴포넌트.
@@ -57,6 +58,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Job")
 	virtual void OnAttackNotify(FName NotifyName);
 
+	/** 매 프레임 호출(플레이어 Tick). 조준과 무관한 패시브 효과(자가 회복 등)용. 기본 구현 없음. */
+	virtual void TickJob(float DeltaTime);
+
 protected:
 	/** 소유 플레이어 (InitializeForOwner에서 설정) */
 	UPROPERTY()
@@ -64,4 +68,14 @@ protected:
 
 	/** 공격 사운드를 소유자 위치에서 재생 */
 	void PlayAttackSound();
+
+	/**
+	 * 전방으로 발사체를 스폰하고 직업의 Damage/속도를 적용해 반환한다 (궁수/마법사 공용).
+	 * @param ProjectileClass  스폰할 발사체 클래스
+	 * @param Speed            발사 속도(cm/s)
+	 * @param MuzzleOffset     캐릭터 앞쪽으로 스폰하는 거리(cm)
+	 * @param MuzzleHeight     스폰 높이 보정(cm)
+	 * @return 스폰된 발사체(실패 시 nullptr). 호출 측에서 폭발반경 등 추가 설정 가능.
+	 */
+	AProjectile* SpawnProjectileForward(TSubclassOf<AProjectile> ProjectileClass, float Speed, float MuzzleOffset, float MuzzleHeight);
 };

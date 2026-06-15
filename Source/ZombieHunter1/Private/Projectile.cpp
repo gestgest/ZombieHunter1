@@ -5,6 +5,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Engine/OverlapResult.h" // FOverlapResult (범위 폭발 오버랩 결과)
 #include "Kismet/GameplayStatics.h"
 
 AProjectile::AProjectile()
@@ -62,10 +63,33 @@ void AProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* O
 		return; // 적이 아니면 통과 (벽/플레이어 등 무시)
 	}
 
-	HitEnemy->AddHP(-Damage);
+	if (ExplosionRadius > 0.0f)
+	{
+		// 범위 폭발: 적중 지점 주변의 모든 적에게 피해 (마법사 파이어볼 등)
+		TArray<FOverlapResult> Overlaps;
+		FCollisionShape Sphere = FCollisionShape::MakeSphere(ExplosionRadius);
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(this);
 
-	const FVector Force = GetActorForwardVector() * KnockbackForce + FVector(0, 0, 100);
-	HitEnemy->LaunchCharacter(Force, false, false);
+		GetWorld()->OverlapMultiByChannel(
+			Overlaps, GetActorLocation(), FQuat::Identity, ECC_Pawn, Sphere, Params);
+
+		TSet<AEnemy*> Damaged;
+		for (const FOverlapResult& O : Overlaps)
+		{
+			AEnemy* Enemy = Cast<AEnemy>(O.GetActor());
+			if (Enemy && !Damaged.Contains(Enemy))
+			{
+				Damaged.Add(Enemy);
+				ApplyHit(Enemy);
+			}
+		}
+	}
+	else
+	{
+		// 단일 대상 (화살 등)
+		ApplyHit(HitEnemy);
+	}
 
 	if (HitSound)
 	{
@@ -73,4 +97,25 @@ void AProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* O
 	}
 
 	Destroy();
+}
+
+void AProjectile::ApplyHit(AEnemy* Enemy)
+{
+	if (!Enemy)
+	{
+		return;
+	}
+
+	Enemy->AddHP(-Damage);
+
+	// 발사체(폭발 중심)에서 적을 향하는 수평 방향으로 넉백. 같은 위치면 진행 방향으로.
+	FVector Dir = Enemy->GetActorLocation() - GetActorLocation();
+	Dir.Z = 0.0f;
+	if (!Dir.Normalize())
+	{
+		Dir = GetActorForwardVector();
+	}
+
+	const FVector Force = Dir * KnockbackForce + FVector(0, 0, 100);
+	Enemy->LaunchCharacter(Force, false, false);
 }

@@ -226,19 +226,37 @@ void AEnemy::SetIsDead(bool value)
 
 void AEnemy::SetAIController()
 {
-	// 컨트롤러가 없을 때만 생성 (이미 빙의돼 있으면 중복 생성 방지)
-	if (!GetController())
-	{
-		SpawnDefaultController(); //강제 호출
-	}
-
+	// 이미 AI 컨트롤러에 빙의돼 있으면 그대로 재사용
 	aiController = Cast<AAIController>(GetController());
 
-	// SpawnDefaultController가 실패하면(AIControllerClass 미지정 등) aiController가 null일 수 있음.
-	// null인 채로 역참조하면 크래시 → 방어적으로 검사한다. => 가끔 에디터가 터질때 이게 터진거다.
 	if (!aiController)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AEnemy::SetAIController - AIController 생성 실패 (AIControllerClass 확인 필요) "));
+		// 혹시 BP/직렬화로 AIControllerClass가 비어 있을 경우를 대비해 기본값을 런타임에 보장
+		// (C++ 생성자 값보다 BP 저장값이 우선하므로, 여기서 한 번 더 못 박는다)
+		if (AIControllerClass == nullptr)
+		{
+			AIControllerClass = AAIController::StaticClass();
+		}
+
+		// 비-AI 컨트롤러가 이미 빙의 중이면 SpawnDefaultController가 그냥 무시된다
+		// (내부에서 Controller != null이면 early-return). 먼저 빙의를 풀어준다.
+		if (AController* Existing = GetController())
+		{
+			Existing->UnPossess();
+		}
+
+		SpawnDefaultController(); //AI 컨트롤러 생성 + 빙의
+		aiController = Cast<AAIController>(GetController());
+	}
+
+	// 그래도 실패하면 크래시 대신 경고. 정확한 원인 파악을 위해 상태를 모두 찍는다.
+	if (!aiController)
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("AEnemy::SetAIController 실패 - AIControllerClass=%s, Controller=%s, AutoPossessAI=%d"),
+			*GetNameSafe(AIControllerClass),
+			*GetNameSafe(GetController()),
+			(int32)AutoPossessAI);
 		return;
 	}
 
