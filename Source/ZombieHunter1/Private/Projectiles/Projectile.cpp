@@ -1,6 +1,6 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Projectile.h"
+#include "Projectiles/Projectile.h"
 #include "Enemy.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -8,6 +8,7 @@
 #include "Engine/OverlapResult.h" // FOverlapResult (범위 폭발 오버랩 결과)
 #include "Kismet/GameplayStatics.h"
 
+//투사체
 AProjectile::AProjectile()
 {
 	PrimaryActorTick.bCanEverTick = false;

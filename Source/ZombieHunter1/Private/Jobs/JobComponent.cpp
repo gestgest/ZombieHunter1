@@ -2,7 +2,7 @@
 
 #include "Jobs/JobComponent.h"
 #include "MyPlayer.h"
-#include "Projectile.h"
+#include "Projectiles/Projectile.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 

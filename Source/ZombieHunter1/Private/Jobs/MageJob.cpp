@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/MageJob.h"
-#include "Projectile.h"
+#include "Projectiles/Projectile.h"
 
 UMageJob::UMageJob()
 {

@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/ArcherJob.h"
-#include "Projectile.h"
+#include "Projectiles/Projectile.h"
 
 UArcherJob::UArcherJob()
 {
