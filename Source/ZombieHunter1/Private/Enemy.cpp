@@ -14,13 +14,11 @@
 // Sets default values
 AEnemy::AEnemy()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = true; //update
 
-	// 스폰될 때도 자동으로 AIController를 생성해서 빙의하도록 설정
-	//AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
-	// 기본 AI 컨트롤러 클래스 지정
-	//AIControllerClass = AAIController::StaticClass();
+	// 기본 AI 컨트롤러 클래스 지정 — SpawnDefaultController()가 항상 생성할 대상을 갖도록.
+	// (BP에서 None으로 비워두면 SpawnDefaultController가 아무것도 안 만들어 크래시 위험)
+	AIControllerClass = AAIController::StaticClass();
 }
 
 // Called when the game starts or when spawned
@@ -228,9 +226,24 @@ void AEnemy::SetIsDead(bool value)
 
 void AEnemy::SetAIController()
 {
-	SpawnDefaultController(); //강제 호출
+	// 컨트롤러가 없을 때만 생성 (이미 빙의돼 있으면 중복 생성 방지)
+	if (!GetController())
+	{
+		SpawnDefaultController(); //강제 호출
+	}
 
 	aiController = Cast<AAIController>(GetController());
 
-	aiController->GetPathFollowingComponent()->OnRequestFinished.AddUObject(this, &AEnemy::MoveCompleted);
+	// SpawnDefaultController가 실패하면(AIControllerClass 미지정 등) aiController가 null일 수 있음.
+	// null인 채로 역참조하면 크래시 → 방어적으로 검사한다. => 가끔 에디터가 터질때 이게 터진거다.
+	if (!aiController)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AEnemy::SetAIController - AIController 생성 실패 (AIControllerClass 확인 필요) "));
+		return;
+	}
+
+	if (UPathFollowingComponent* PFC = aiController->GetPathFollowingComponent())
+	{
+		PFC->OnRequestFinished.AddUObject(this, &AEnemy::MoveCompleted);
+	}
 }
