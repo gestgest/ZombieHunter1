@@ -20,6 +20,18 @@
 #include "Engine/Engine.h" //GEngine 화면 디버그
 #include "Jobs/JobComponent.h"
 #include "Jobs/SwordsmanJob.h"
+#include "Components/SlateWrapperTypes.h" //ESlateVisibility
+
+// 모바일(안드로이드/iOS) 플랫폼이면 true. 터치 조이스틱 표시 여부 판단용.
+// 컴파일 타임 매크로라 PC 빌드에선 항상 false → 조이스틱 숨김.
+static bool IsMobilePlatform()
+{
+#if PLATFORM_ANDROID || PLATFORM_IOS
+    return true;
+#else
+    return false;
+#endif
+}
 
 
 
@@ -338,12 +350,20 @@ void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
     // (플레이어가 캔버스를 들고 있으므로 캔버스가 거꾸로 플레이어를 찾을 필요 없음)
     if (CanvasWidget)
     {
+        // 모바일(안드로이드/iOS)에서만 터치 조이스틱을 표시한다. PC에선 숨겨서
+        // 마우스(로스트아크식) 조작만 쓰고, 클릭이 조이스틱 위젯에 먹히지 않게 한다.
+        // Collapsed = 화면에서 빠지고 히트테스트도 안 됨 → 마우스 클릭이 게임으로 전달.
+        const ESlateVisibility JoystickVis =
+            IsMobilePlatform() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+
         if (CanvasWidget->MoveJoystick)
         {
+            CanvasWidget->MoveJoystick->SetVisibility(JoystickVis);
             CanvasWidget->MoveJoystick->OnJoystickMoved.AddUniqueDynamic(this, &AMyPlayer::OnMoveJoystickMoved);
         }
         if (CanvasWidget->AimJoystick)
         {
+            CanvasWidget->AimJoystick->SetVisibility(JoystickVis);
             CanvasWidget->AimJoystick->OnJoystickMoved.AddUniqueDynamic(this, &AMyPlayer::OnAimJoystickMoved);
         }
     }
