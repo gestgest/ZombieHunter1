@@ -232,8 +232,19 @@ void AMyPlayer::UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const 
     {
         const FVector FaceDir(Face.Y, Face.X, 0.0f); // 이동과 동일한 축 매핑
         const FRotator TargetRot(0.0f, FaceDir.Rotation().Yaw, 0.0f);
-        const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, TurnInterpSpeed);
-        SetActorRotation(NewRot);
+        if (bAiming)
+        {
+            // 조준(좌클릭/오른쪽 스틱) 중에는 즉시 그 방향을 바라본다.
+            // 부드러운 보간을 쓰면 회전이 끝나기 전에 발사돼 화살이 중간 방향으로 나가므로,
+            // 발사 프레임에 정면 = 커서 방향이 되도록 스냅한다. (발사체는 액터 정면으로 나감)
+            SetActorRotation(TargetRot);
+        }
+        else
+        {
+            // 단순 이동 방향 바라보기는 부드럽게 보간
+            const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, TurnInterpSpeed);
+            SetActorRotation(NewRot);
+        }
     }
 
     // 조준 중에는 일정 간격으로 자동 공격 (간격은 현재 직업이 결정)
@@ -251,16 +262,6 @@ void AMyPlayer::UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const 
     }
 }
 
-void AMyPlayer::OnMoveX(float Value) { GamepadMove.X = Value; }
-void AMyPlayer::OnMoveY(float Value) { GamepadMove.Y = Value; }
-void AMyPlayer::OnAimX(float Value) { GamepadAim.X = Value; }
-void AMyPlayer::OnAimY(float Value) { GamepadAim.Y = Value; }
-
-// 마우스 버튼: 누르고 있는 동안만 작동(로스트아크식 hold). 실제 처리는 Tick에서.
-void AMyPlayer::OnLeftMousePressed()   { bLeftMouseHeld = true; }
-void AMyPlayer::OnLeftMouseReleased()  { bLeftMouseHeld = false; }
-void AMyPlayer::OnRightMousePressed()  { bRightMouseHeld = true; }
-void AMyPlayer::OnRightMouseReleased() { bRightMouseHeld = false; }
 
 bool AMyPlayer::GetCursorGroundLocation(FVector& OutLocation) const
 {
@@ -348,7 +349,7 @@ void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
     }
 }
 
-// Called to bind functionality to input
+// Input
 void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -459,3 +460,14 @@ void AMyPlayer::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNot
         CurrentJob->OnAttackNotify(NotifyName);
     }
 }
+
+void AMyPlayer::OnMoveX(float Value) { GamepadMove.X = Value; }
+void AMyPlayer::OnMoveY(float Value) { GamepadMove.Y = Value; }
+void AMyPlayer::OnAimX(float Value) { GamepadAim.X = Value; }
+void AMyPlayer::OnAimY(float Value) { GamepadAim.Y = Value; }
+
+// 마우스 버튼: 누르고 있는 동안만 작동(로스트아크식 조작)
+void AMyPlayer::OnLeftMousePressed() { bLeftMouseHeld = true; }
+void AMyPlayer::OnLeftMouseReleased() { bLeftMouseHeld = false; }
+void AMyPlayer::OnRightMousePressed() { bRightMouseHeld = true; }
+void AMyPlayer::OnRightMouseReleased() { bRightMouseHeld = false; }
