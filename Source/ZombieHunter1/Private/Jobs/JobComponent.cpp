@@ -5,6 +5,9 @@
 #include "Projectiles/Projectile.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
+#include "Engine/Engine.h" //GEngine 소켓 경고
 
 UJobComponent::UJobComponent()
 {
@@ -15,6 +18,44 @@ UJobComponent::UJobComponent()
 void UJobComponent::InitializeForOwner(AMyPlayer* Player)
 {
 	OwnerPlayer = Player;
+	EquipWeapon(); // 직업 무기를 손 소켓에 붙인다
+}
+
+void UJobComponent::EquipWeapon()
+{
+	if (!OwnerPlayer || !WeaponMesh)
+	{
+		return; // 무기가 없는 직업(또는 에셋 미지정)이면 그냥 통과
+	}
+
+	USkeletalMeshComponent* CharMesh = OwnerPlayer->GetMesh();
+	if (!CharMesh)
+	{
+		return;
+	}
+
+	// 무기 메시 컴포넌트를 런타임 생성해 캐릭터 손 소켓에 부착.
+	// 무기는 손에 들려만 있으면 되므로 충돌은 끈다(타격 판정은 직업 로직이 따로 처리).
+	WeaponMeshComp = NewObject<USkeletalMeshComponent>(OwnerPlayer);
+	if (!WeaponMeshComp)
+	{
+		return;
+	}
+	WeaponMeshComp->SetSkeletalMesh(WeaponMesh);
+	WeaponMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WeaponMeshComp->RegisterComponent();
+	WeaponMeshComp->AttachToComponent(
+		CharMesh,
+		FAttachmentTransformRules::SnapToTargetIncludingScale,
+		WeaponSocket);
+
+	// 소켓이 스켈레톤에 없으면 컴포넌트 원점(발밑)에 붙어 무기가 엉뚱한 곳에 보인다 → 경고.
+	if (!CharMesh->DoesSocketExist(WeaponSocket) && GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Orange,
+			FString::Printf(TEXT("[Weapon] 소켓 '%s' 없음 - 캐릭터 스켈레톤에 소켓을 추가하세요"),
+				*WeaponSocket.ToString()));
+	}
 }
 
 void UJobComponent::Attack()

@@ -9,6 +9,8 @@
 USwordsmanJob::USwordsmanJob()
 {
 	JobName = TEXT("Swordsman");
+
+	// 무기(WeaponMesh)는 BP 서브클래스(예: BP_SwordsmanJob)에서 직접 지정한다.
 }
 
 void USwordsmanJob::OnAttackNotify(FName NotifyName)
