@@ -11,7 +11,6 @@ class UAnimMontage;
 class USoundBase;
 class AProjectile;
 class USkeletalMesh;
-class USkeletalMeshComponent;
 
 /**
  * 직업(Job) 베이스 컴포넌트.
@@ -53,13 +52,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Debug")
 	bool bDebugProjectileRange = false;
 
-	/** 직업이 손에 드는 무기 메시(검사=검, 궁수=활 등). 비우면 무기 없음. 직업 서브클래스가 기본값 지정. */
+	/** 이 직업이 들 무기 메시(검사=검, 궁수=활 등). 비우면 무기 숨김(예: 지팡이 없는 마법사).
+	 *  캐릭터에 이미 있는 무기 컴포넌트의 메시를 이걸로 교체한다. 직업 BP 서브클래스에서 지정. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Job|Weapon")
 	USkeletalMesh* WeaponMesh = nullptr;
-
-	/** 무기를 붙일 캐릭터 메시의 소켓 이름. 캐릭터 스켈레톤에 이 소켓이 있어야 손에 붙는다. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Job|Weapon")
-	FName WeaponSocket = TEXT("hand_r");
 
 	/** 소유 플레이어를 연결한다. 플레이어가 컴포넌트 생성 직후 호출. */
 	void InitializeForOwner(AMyPlayer* Player);
@@ -80,11 +76,7 @@ protected:
 	UPROPERTY()
 	AMyPlayer* OwnerPlayer = nullptr;
 
-	/** 런타임에 생성된 무기 메시 컴포넌트 (WeaponMesh를 손 소켓에 붙인 것) */
-	UPROPERTY()
-	USkeletalMeshComponent* WeaponMeshComp = nullptr;
-
-	/** WeaponMesh를 OwnerPlayer의 WeaponSocket에 붙인다. InitializeForOwner에서 호출. */
+	/** 캐릭터의 기존 무기 컴포넌트 메시를 이 직업의 WeaponMesh로 교체한다. InitializeForOwner에서 호출. */
 	void EquipWeapon();
 
 	/** 공격 사운드를 소유자 위치에서 재생 */

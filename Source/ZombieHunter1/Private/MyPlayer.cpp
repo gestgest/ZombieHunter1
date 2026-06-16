@@ -21,6 +21,9 @@
 #include "Jobs/JobComponent.h"
 #include "Jobs/SwordsmanJob.h"
 #include "Components/SlateWrapperTypes.h" //ESlateVisibility
+#include "Components/SkeletalMeshComponent.h" //무기 컴포넌트 메시 교체
+#include "Components/ChildActorComponent.h" //무기 ChildActor(Weapon_BP)
+#include "Engine/SkeletalMesh.h"
 
 // 모바일(안드로이드/iOS) 플랫폼이면 true. 터치 조이스틱 표시 여부 판단용.
 // 컴파일 타임 매크로라 PC 빌드에선 항상 false → 조이스틱 숨김.
@@ -144,6 +147,45 @@ void AMyPlayer::BeginPlay()
         // IgnoreRootMotion: 루트 모션을 추출해 메시는 제자리에 고정하되 이동에는 적용하지 않음.
         // → 공격 중에도 AddMovementInput(이동 입력)이 그대로 캐릭터를 움직임.
         animInstance->SetRootMotionMode(ERootMotionMode::IgnoreRootMotion);
+    }
+
+    // 무기는 ChildActorComponent(Weapon_BP) → BP_sword 액터 → 그 안의 SkeletalMeshComponent 구조다.
+    // 그 안쪽 메시 컴포넌트를 찾아 캐시한다(직업이 이 메시만 교체). 직업 생성보다 먼저 찾아둬야 함.
+    {
+        TArray<UChildActorComponent*> ChildComps;
+        GetComponents<UChildActorComponent>(ChildComps);
+        for (UChildActorComponent* CAC : ChildComps)
+        {
+            if (!CAC)
+            {
+                continue;
+            }
+            AActor* Child = CAC->GetChildActor();
+            if (!Child)
+            {
+                continue;
+            }
+            USkeletalMeshComponent* InnerMesh = Child->FindComponentByClass<USkeletalMeshComponent>();
+            if (!InnerMesh)
+            {
+                continue;
+            }
+            // 'Weapon' 태그가 붙은 ChildActorComponent를 우선 사용, 없으면 첫 번째를 폴백으로.
+            if (CAC->ComponentHasTag(WeaponComponentTag))
+            {
+                WeaponMeshComponent = InnerMesh;
+                break;
+            }
+            if (!WeaponMeshComponent)
+            {
+                WeaponMeshComponent = InnerMesh;
+            }
+        }
+        if (!WeaponMeshComponent && GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Orange,
+                TEXT("[Weapon] 무기 ChildActor(예: Weapon_BP) 안의 SkeletalMeshComponent를 못 찾음"));
+        }
     }
 
     // 직업(Job) 컴포넌트 생성 — 시작 시 1개 고정.
@@ -303,6 +345,19 @@ bool AMyPlayer::GetCursorGroundLocation(FVector& OutLocation) const
     }
     OutLocation = WorldOrigin + WorldDirection * T;
     return true;
+}
+
+void AMyPlayer::SetWeaponMesh(USkeletalMesh* NewMesh)
+{
+    if (!WeaponMeshComponent)
+    {
+        return; // 무기 컴포넌트를 못 찾았으면(태그 미설정) 그냥 통과
+    }
+
+    // 기존 무기 컴포넌트의 메시만 교체. 컴포넌트 자체는 유지되므로 BP 참조가 안 깨진다.
+    WeaponMeshComponent->SetSkeletalMeshAsset(NewMesh);
+    // 무기가 없는 직업(NewMesh == null)은 컴포넌트를 숨긴다.
+    WeaponMeshComponent->SetVisibility(NewMesh != nullptr);
 }
 
 //모바일용

@@ -14,6 +14,8 @@ class UNavigationInvokerComponent;
 class UVirtualJoystick;
 class UTexture2D;
 class UJobComponent;
+class USkeletalMesh;
+class USkeletalMeshComponent;
 
 UCLASS()
 class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
@@ -176,6 +178,22 @@ public:
 	/** 현재 부착된 직업 컴포넌트 (런타임 생성) */
 	UPROPERTY(BlueprintReadOnly, Category = "Job")
 	UJobComponent* CurrentJob = nullptr;
+
+	//////////////////////////////////////////////////////////////////////////
+	// 무기 메시 교체 — 캐릭터(BP)에 이미 붙어 있는 무기 컴포넌트의 메시를 직업에 맞게 바꾼다.
+
+	/** 무기 ChildActorComponent(예: Weapon_BP)를 고를 때 쓰는 태그. 여러 개일 때 그 컴포넌트 Details에서 달면 우선 선택됨.
+	 *  하나뿐이면 태그 없어도 자동으로 잡힌다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	FName WeaponComponentTag = TEXT("Weapon");
+
+	/** 무기 ChildActor(BP_sword 등) 안의 메시 컴포넌트. BeginPlay에서 탐색해 캐시. 직업이 이 메시를 교체한다. */
+	UPROPERTY(BlueprintReadOnly, Category = "Weapon")
+	USkeletalMeshComponent* WeaponMeshComponent = nullptr;
+
+	/** 무기 컴포넌트의 스켈레탈 메시를 교체한다. NewMesh가 null이면 무기를 숨긴다. 직업이 호출. */
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void SetWeaponMesh(USkeletalMesh* NewMesh);
 
 	/** 키보드(WASD) Enhanced Input(IA_Move)에서 호출. 카메라가 고정된 월드축 기준으로 이동
 	 *  (컨트롤러 회전을 타지 않아 탑다운 카메라와 항상 일치). Triggered 이벤트에 연결할 것. */
