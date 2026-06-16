@@ -12,31 +12,29 @@ UJobComponent::UJobComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UJobComponent::InitializeForOwner(AMyPlayer* Player)
+void UJobComponent::InitializeForOwner(ACharacter* Owner)
 {
-	OwnerPlayer = Player;
-	EquipWeapon(); // 직업 무기를 손 소켓에 붙인다
+	OwnerCharacter = Owner;
+	EquipWeapon(); // 직업 무기를 소유자 무기 슬롯에 끼운다
 }
 
 void UJobComponent::EquipWeapon()
 {
-	if (!OwnerPlayer)
-	{
-		return;
-	}
-
-	// 캐릭터에 이미 있는 무기 컴포넌트의 메시만 이 직업 무기로 교체한다.
-	// (컴포넌트를 새로 만들거나 삭제하지 않으므로 BP 참조가 깨지지 않는다.)
+	// 무기 메시 교체는 플레이어의 무기 슬롯(ChildActor) 시스템 전용이다.
+	// 동료(ACompanion)는 자기 BP 메시를 그대로 쓰므로 여기서 건드리지 않는다.
 	// WeaponMesh가 null이면 무기가 숨겨진다(예: 지팡이 없는 마법사).
-	OwnerPlayer->SetWeaponMesh(WeaponMesh);
+	if (AMyPlayer* Player = Cast<AMyPlayer>(OwnerCharacter))
+	{
+		Player->SetWeaponMesh(WeaponMesh);
+	}
 }
 
 void UJobComponent::Attack()
 {
 	// 기본 동작: 공격 몽타주 재생. 몽타주의 Notify가 OnAttackNotify()를 부른다.
-	if (OwnerPlayer && AttackMontage)
+	if (OwnerCharacter && AttackMontage)
 	{
-		OwnerPlayer->PlayAnimMontage(AttackMontage);
+		OwnerCharacter->PlayAnimMontage(AttackMontage);
 	}
 }
 
@@ -52,12 +50,12 @@ void UJobComponent::TickJob(float DeltaTime)
 
 void UJobComponent::PlayAttackSound()
 {
-	if (OwnerPlayer && AttackSound)
+	if (OwnerCharacter && AttackSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
-			OwnerPlayer,
+			OwnerCharacter,
 			AttackSound,
-			OwnerPlayer->GetActorLocation(),
+			OwnerCharacter->GetActorLocation(),
 			1.0f,
 			1.0f
 		);
@@ -66,25 +64,25 @@ void UJobComponent::PlayAttackSound()
 
 AProjectile* UJobComponent::SpawnProjectileForward(TSubclassOf<AProjectile> ProjectileClass, float Speed, float MuzzleOffset, float MuzzleHeight)
 {
-	if (!OwnerPlayer || !ProjectileClass)
+	if (!OwnerCharacter || !ProjectileClass)
 	{
 		return nullptr;
 	}
 
-	UWorld* World = OwnerPlayer->GetWorld();
+	UWorld* World = OwnerCharacter->GetWorld();
 	if (!World)
 	{
 		return nullptr;
 	}
 
-	const FVector Forward = OwnerPlayer->GetActorForwardVector();
+	const FVector Forward = OwnerCharacter->GetActorForwardVector();
 	const FVector SpawnLocation =
-		OwnerPlayer->GetActorLocation() + Forward * MuzzleOffset + FVector(0, 0, MuzzleHeight);
+		OwnerCharacter->GetActorLocation() + Forward * MuzzleOffset + FVector(0, 0, MuzzleHeight);
 	const FRotator SpawnRotation = Forward.Rotation();
 
 	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = OwnerPlayer;
-	SpawnParams.Instigator = OwnerPlayer;
+	SpawnParams.Owner = OwnerCharacter;
+	SpawnParams.Instigator = OwnerCharacter; // ACharacter는 APawn이라 Instigator로 사용 가능
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 	AProjectile* Projectile = World->SpawnActor<AProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams);

@@ -24,6 +24,7 @@
 #include "Components/SkeletalMeshComponent.h" //무기 컴포넌트 메시 교체
 #include "Components/ChildActorComponent.h" //무기 ChildActor(Weapon_BP)
 #include "Engine/SkeletalMesh.h"
+#include "Companion.h" //동료 섭외
 
 // 모바일(안드로이드/iOS) 플랫폼이면 true. 터치 조이스틱 표시 여부 판단용.
 // 컴파일 타임 매크로라 PC 빌드에선 항상 false → 조이스틱 숨김.

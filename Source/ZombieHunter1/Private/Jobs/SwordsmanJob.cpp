@@ -15,21 +15,21 @@ USwordsmanJob::USwordsmanJob()
 
 void USwordsmanJob::OnAttackNotify(FName NotifyName)
 {
-	if (!OwnerPlayer)
+	if (!OwnerCharacter)
 	{
 		return;
 	}
 
 	// 전방으로 구체를 스윕해 범위 내 모든 적을 타격한다.
 	TArray<FHitResult> hitResults;
-	const FVector start = OwnerPlayer->GetActorLocation();
-	const FVector end = start + (OwnerPlayer->GetActorForwardVector() * AttackRange);
+	const FVector start = OwnerCharacter->GetActorLocation();
+	const FVector end = start + (OwnerCharacter->GetActorForwardVector() * AttackRange);
 
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(AttackRadius);
 	FCollisionQueryParams queryParams;
-	queryParams.AddIgnoredActor(OwnerPlayer);
+	queryParams.AddIgnoredActor(OwnerCharacter);
 
-	const bool bHit = OwnerPlayer->GetWorld()->SweepMultiByChannel(
+	const bool bHit = OwnerCharacter->GetWorld()->SweepMultiByChannel(
 		hitResults,
 		start,
 		end,
@@ -47,7 +47,7 @@ void USwordsmanJob::OnAttackNotify(FName NotifyName)
 		{
 			UE_LOG(LogTemp, Log, TEXT("Hit Enemy!"));
 			hitEnemy->AddHP(-Damage);
-			const FVector force = OwnerPlayer->GetActorForwardVector() * KnockbackForce + FVector(0, 0, 100);
+			const FVector force = OwnerCharacter->GetActorForwardVector() * KnockbackForce + FVector(0, 0, 100);
 			hitEnemy->LaunchCharacter(force, false, false);
 			bDidHit = true;
 		}

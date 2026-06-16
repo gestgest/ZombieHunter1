@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "JobComponent.generated.h"
 
-class AMyPlayer;
+class ACharacter;
 class UAnimMontage;
 class USoundBase;
 class AProjectile;
@@ -14,7 +14,8 @@ class USkeletalMesh;
 
 /**
  * 직업(Job) 베이스 컴포넌트.
- * 이동/조준은 AMyPlayer가 담당하고, "공격 방식"만 이 컴포넌트로 분리한다.
+ * 이동/조준은 소유 캐릭터(플레이어 또는 동료 AI)가 담당하고, "공격 방식"만 이 컴포넌트로 분리한다.
+ * 소유자는 ACharacter이면 무엇이든 가능 — 플레이어(AMyPlayer)와 동료(ACompanion)가 같은 직업을 공유한다.
  * 직업마다 서브클래스(USwordsmanJob, UArcherJob...)에서 Attack()/OnAttackNotify()를 재정의한다.
  *
  * - Attack()        : 자동공격 타이밍에 플레이어가 호출. 기본 동작은 AttackMontage 재생.
@@ -57,8 +58,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Job|Weapon")
 	USkeletalMesh* WeaponMesh = nullptr;
 
-	/** 소유 플레이어를 연결한다. 플레이어가 컴포넌트 생성 직후 호출. */
-	void InitializeForOwner(AMyPlayer* Player);
+	/** 소유 캐릭터(플레이어/동료)를 연결한다. 소유자가 컴포넌트 생성 직후 호출. */
+	void InitializeForOwner(ACharacter* Owner);
 
 	/** 공격 시도. 기본 구현은 AttackMontage를 재생한다. */
 	UFUNCTION(BlueprintCallable, Category = "Job")
@@ -72,9 +73,9 @@ public:
 	virtual void TickJob(float DeltaTime);
 
 protected:
-	/** 소유 플레이어 (InitializeForOwner에서 설정) */
+	/** 소유 캐릭터 — 플레이어 또는 동료 AI (InitializeForOwner에서 설정) */
 	UPROPERTY()
-	AMyPlayer* OwnerPlayer = nullptr;
+	ACharacter* OwnerCharacter = nullptr;
 
 	/** 캐릭터의 기존 무기 컴포넌트 메시를 이 직업의 WeaponMesh로 교체한다. InitializeForOwner에서 호출. */
 	void EquipWeapon();

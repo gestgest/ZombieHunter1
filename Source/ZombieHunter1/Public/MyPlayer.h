@@ -16,6 +16,7 @@ class UTexture2D;
 class UJobComponent;
 class USkeletalMesh;
 class USkeletalMeshComponent;
+class ACompanion;
 
 UCLASS()
 class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
@@ -205,6 +206,17 @@ public:
 	/** 무기 컴포넌트의 스켈레탈 메시를 교체한다. NewMesh가 null이면 무기를 숨긴다. 직업이 호출. */
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void SetWeaponMesh(USkeletalMesh* NewMesh);
+
+	//////////////////////////////////////////////////////////////////////////
+	// 동료 섭외 — 동료를 스폰해 플레이어를 따라다니며 싸우게 한다.
+
+	/** 스폰할 동료 클래스(BP_Companion 지정). 비우면 섭외 안 됨. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
+	TSubclassOf<ACompanion> CompanionClass;
+
+	/** 동료를 플레이어 근처에 스폰해 따라다니게 한다. 발동 조건은 BP/디버그 키에서 이 함수를 호출해 처리. */
+	UFUNCTION(BlueprintCallable, Category = "Companion")
+	void RecruitCompanion();
 
 	/** 키보드(WASD) Enhanced Input(IA_Move)에서 호출. 카메라가 고정된 월드축 기준으로 이동
 	 *  (컨트롤러 회전을 타지 않아 탑다운 카메라와 항상 일치). Triggered 이벤트에 연결할 것. */

@@ -15,28 +15,32 @@ void UHealerJob::Attack()
 	// 힐 시전 모션(몽타주)이 있으면 재생. 힐 자체는 아래에서 즉시 처리한다.
 	Super::Attack();
 
-	if (!OwnerPlayer)
+	if (!OwnerCharacter)
 	{
 		return;
 	}
 
-	// 1) 시전자 자신 회복 (동료가 없는 솔로에서도 유효하도록)
-	HealCharacter(OwnerPlayer);
+	// 1) 시전자 자신 회복 — HP 시스템이 AMyPlayer에 있으므로 플레이어일 때만.
+	//    TODO(동료): 동료도 HP를 가지면 공용 체력 인터페이스로 일반화.
+	if (AMyPlayer* Self = Cast<AMyPlayer>(OwnerCharacter))
+	{
+		HealCharacter(Self);
+	}
 
 	// 2) 전방 범위의 아군(동료)도 회복 — 동료 시스템용
-	UWorld* World = OwnerPlayer->GetWorld();
+	UWorld* World = OwnerCharacter->GetWorld();
 	if (!World)
 	{
 		return;
 	}
 
 	TArray<FHitResult> Hits;
-	const FVector Start = OwnerPlayer->GetActorLocation();
-	const FVector End = Start + OwnerPlayer->GetActorForwardVector() * HealRange;
+	const FVector Start = OwnerCharacter->GetActorLocation();
+	const FVector End = Start + OwnerCharacter->GetActorForwardVector() * HealRange;
 
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(HealRadius);
 	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(OwnerPlayer); // 자신은 위에서 이미 회복
+	Params.AddIgnoredActor(OwnerCharacter); // 자신은 위에서 이미 회복
 
 	World->SweepMultiByChannel(Hits, Start, End, FQuat::Identity, ECC_Pawn, Sphere, Params);
 
