@@ -7,11 +7,12 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Engine/OverlapResult.h" // FOverlapResult (범위 폭발 오버랩 결과)
 #include "Kismet/GameplayStatics.h"
+#include "DrawDebugHelpers.h" // 디버그 범위 시각화
 
 //투사체
 AProjectile::AProjectile()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true; // 디버그 그리기용. bDrawDebug=false면 Tick에서 즉시 반환.
 
 	// 충돌 구체를 루트로. Pawn(적)과 겹침을 감지한다.
 	CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
@@ -41,6 +42,42 @@ void AProjectile::BeginPlay()
 	Super::BeginPlay();
 
 	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AProjectile::OnSphereOverlap);
+
+	// 디버그 사거리 라인 기준점 기록 (발사 지점/방향)
+	SpawnLocation = GetActorLocation();
+	SpawnForward = GetActorForwardVector();
+}
+
+void AProjectile::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (!bDrawDebug)
+	{
+		return;
+	}
+	
+
+	// 비행 중 충돌 구체(실제 적중 판정 범위)를 매 프레임 그린다.
+	DrawDebugSphere(GetWorld(), GetActorLocation(),
+		CollisionSphere->GetScaledSphereRadius(), 12, FColor::Cyan, false, -1.0f, 0, 1.0f);
+
+	// 폭발형이면 적중 시 터질 범위를 미리 노란 구체로 보여준다.
+	if (ExplosionRadius > 0.0f)
+	{
+		DrawDebugSphere(GetWorld(), GetActorLocation(),
+			ExplosionRadius, 16, FColor::Yellow, false, -1.0f, 0, 1.0f);
+	}
+
+	// 최대 사거리 = 속도 × 수명. 발사 지점에서 진행 방향으로 라인 + 끝점 표시.
+	const float Speed = ProjectileMovement ? ProjectileMovement->MaxSpeed : 0.0f;
+	const float MaxRange = Speed * InitialLifeSpan;
+	if (MaxRange > 0.0f)
+	{
+		const FVector EndPoint = SpawnLocation + SpawnForward * MaxRange;
+		DrawDebugLine(GetWorld(), SpawnLocation, EndPoint, FColor::Green, false, -1.0f, 0, 2.0f);
+		DrawDebugSphere(GetWorld(), EndPoint, 20.0f, 8, FColor::Green, false, -1.0f, 0, 1.0f);
+	}
 }
 
 void AProjectile::SetInitialSpeed(float Speed)
@@ -74,6 +111,13 @@ void AProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* O
 
 		GetWorld()->OverlapMultiByChannel(
 			Overlaps, GetActorLocation(), FQuat::Identity, ECC_Pawn, Sphere, Params);
+
+		if (bDrawDebug)
+		{
+			// 실제로 터진 범위를 1.5초간 빨간 구체로 남겨서 확인.
+			DrawDebugSphere(GetWorld(), GetActorLocation(),
+				ExplosionRadius, 16, FColor::Red, false, 1.5f, 0, 2.0f);
+		}
 
 		TSet<AEnemy*> Damaged;
 		for (const FOverlapResult& O : Overlaps)

@@ -77,6 +77,7 @@ AProjectile* UJobComponent::SpawnProjectileForward(TSubclassOf<AProjectile> Proj
 	if (Projectile)
 	{
 		Projectile->Damage = Damage; // 직업의 데미지를 발사체에 전달
+		Projectile->bDrawDebug = bDebugProjectileRange; // 사거리/적중범위 디버그 표시 여부 전달
 		Projectile->SetInitialSpeed(Speed);
 	}
 	return Projectile;

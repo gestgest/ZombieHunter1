@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -40,11 +40,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
 	USoundBase* HitSound = nullptr;
 
+	/** 디버깅 범위 표시 => 어차피 job에서 설정해준다. */
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile|Debug")
+	bool bDrawDebug = false;
+
 	/** 발사 속도(cm/s)를 설정한다. 직업이 스폰 직후 호출. */
 	void SetInitialSpeed(float Speed);
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	/** 충돌 구체 (루트) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
@@ -57,6 +62,10 @@ protected:
 	/** 직선 비행 이동 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
 	UProjectileMovementComponent* ProjectileMovement;
+
+	/** 디버그 사거리 라인용: 발사 시점의 위치/방향 기록 */
+	FVector SpawnLocation = FVector::ZeroVector;
+	FVector SpawnForward = FVector::ForwardVector;
 
 	UFUNCTION()
 	void OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,

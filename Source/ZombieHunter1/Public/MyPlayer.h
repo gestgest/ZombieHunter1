@@ -52,6 +52,17 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 	void UpdateMovement(float DeltaTime, const FVector2D& Move);
 	void UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const FVector2D& Move);
 
+	// 마우스(로스트아크식): 우클릭 누르는 동안 커서로 이동, 좌클릭 누르는 동안 커서 방향 공격
+	bool bLeftMouseHeld = false;
+	bool bRightMouseHeld = false;
+	void OnLeftMousePressed();
+	void OnLeftMouseReleased();
+	void OnRightMousePressed();
+	void OnRightMouseReleased();
+
+	// 마우스 커서가 가리키는 지면(플레이어 높이의 수평면) 위치. 카메라 광선과 평면의 교점.
+	bool GetCursorGroundLocation(FVector& OutLocation) const;
+
 	// C++에서 생성하는 터치 조이스틱 인스턴스
 	UPROPERTY()
 	UVirtualJoystick* MoveJoystick;

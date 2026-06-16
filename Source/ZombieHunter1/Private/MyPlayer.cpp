@@ -170,9 +170,34 @@ void AMyPlayer::Tick(float DeltaTime)
         return;
     }
 
-    // 게임패드 / 터치 중 더 크게 입력된 쪽을 사용 (둘 다 지원)
-    const FVector2D Move = (TouchMove.SizeSquared() > GamepadMove.SizeSquared()) ? TouchMove : GamepadMove;
-    const FVector2D Aim = (TouchAim.SizeSquared() > GamepadAim.SizeSquared()) ? TouchAim : GamepadAim;
+    // 마우스(로스트아크식)를 기존 스틱 포맷으로 변환:
+    // 커서 방향 (dx,dy) → FVector2D(Y=dx, X=dy). UpdateMovement/UpdateAimAndAttack의 축 매핑과 일치.
+    FVector2D MouseMove = FVector2D::ZeroVector;
+    FVector2D MouseAim = FVector2D::ZeroVector;
+    if (bRightMouseHeld || bLeftMouseHeld)
+    {
+        FVector Cursor;
+        if (GetCursorGroundLocation(Cursor))
+        {
+            FVector ToCursor = Cursor - GetActorLocation();
+            ToCursor.Z = 0.0f;
+            if (ToCursor.Normalize()) // 커서가 캐릭터 위에 겹치면 방향 없음 → 입력 무시
+            {
+                const FVector2D Dir(ToCursor.Y, ToCursor.X);
+                if (bRightMouseHeld) { MouseMove = Dir; }
+                if (bLeftMouseHeld)  { MouseAim = Dir; }
+            }
+        }
+    }
+
+    // 게임패드 / 터치 / 마우스 중 가장 크게 입력된 쪽을 사용 (전부 지원)
+    auto Largest = [](const FVector2D& A, const FVector2D& B, const FVector2D& C) -> FVector2D
+    {
+        const FVector2D& AB = (A.SizeSquared() >= B.SizeSquared()) ? A : B;
+        return (AB.SizeSquared() >= C.SizeSquared()) ? AB : C;
+    };
+    const FVector2D Move = Largest(TouchMove, GamepadMove, MouseMove);
+    const FVector2D Aim = Largest(TouchAim, GamepadAim, MouseAim);
 
     UpdateMovement(DeltaTime, Move);
     UpdateAimAndAttack(DeltaTime, Aim, Move);
@@ -230,6 +255,42 @@ void AMyPlayer::OnMoveX(float Value) { GamepadMove.X = Value; }
 void AMyPlayer::OnMoveY(float Value) { GamepadMove.Y = Value; }
 void AMyPlayer::OnAimX(float Value) { GamepadAim.X = Value; }
 void AMyPlayer::OnAimY(float Value) { GamepadAim.Y = Value; }
+
+// 마우스 버튼: 누르고 있는 동안만 작동(로스트아크식 hold). 실제 처리는 Tick에서.
+void AMyPlayer::OnLeftMousePressed()   { bLeftMouseHeld = true; }
+void AMyPlayer::OnLeftMouseReleased()  { bLeftMouseHeld = false; }
+void AMyPlayer::OnRightMousePressed()  { bRightMouseHeld = true; }
+void AMyPlayer::OnRightMouseReleased() { bRightMouseHeld = false; }
+
+bool AMyPlayer::GetCursorGroundLocation(FVector& OutLocation) const
+{
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!PC)
+    {
+        return false;
+    }
+
+    // 화면의 마우스 위치를 월드 광선(원점+방향)으로 역투영
+    FVector WorldOrigin, WorldDirection;
+    if (!PC->DeprojectMousePositionToWorld(WorldOrigin, WorldDirection))
+    {
+        return false; // 커서가 화면 밖이거나 마우스 위치 없음
+    }
+
+    // 플레이어 발 높이의 수평면(z = 플레이어 Z)과 카메라 광선의 교점을 구함.
+    // 지면 콜리전에 의존하지 않아 어디를 가리켜도 안정적인 목표점이 나온다.
+    if (FMath::IsNearlyZero(WorldDirection.Z))
+    {
+        return false; // 광선이 수평이면 평면과 안 만남
+    }
+    const float T = (GetActorLocation().Z - WorldOrigin.Z) / WorldDirection.Z;
+    if (T < 0.0f)
+    {
+        return false; // 평면이 카메라 뒤쪽
+    }
+    OutLocation = WorldOrigin + WorldDirection * T;
+    return true;
+}
 
 //모바일용
 void AMyPlayer::MoveTopDown(FVector2D Value)
@@ -298,6 +359,12 @@ void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
     PlayerInputComponent->BindAxisKey(EKeys::Gamepad_LeftY, this, &AMyPlayer::OnMoveY);
     PlayerInputComponent->BindAxisKey(EKeys::Gamepad_RightX, this, &AMyPlayer::OnAimX);
     PlayerInputComponent->BindAxisKey(EKeys::Gamepad_RightY, this, &AMyPlayer::OnAimY);
+
+    // 마우스(로스트아크식): 좌클릭 = 공격, 우클릭 = 이동. 누르는 동안 Tick에서 처리.
+    PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &AMyPlayer::OnLeftMousePressed);
+    PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Released, this, &AMyPlayer::OnLeftMouseReleased);
+    PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &AMyPlayer::OnRightMousePressed);
+    PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Released, this, &AMyPlayer::OnRightMouseReleased);
 }
 
 void AMyPlayer::AddMoney()

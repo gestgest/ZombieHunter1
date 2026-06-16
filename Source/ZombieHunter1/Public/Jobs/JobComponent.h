@@ -47,6 +47,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	USoundBase* AttackSound = nullptr;
 
+	/** true면 스폰한 발사체의 사거리/적중범위 디버그를 화면에 그린다(궁수/마법사). 범위 튜닝용. 기본 꺼짐. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Debug")
+	bool bDebugProjectileRange = false;
+
 	/** 소유 플레이어를 연결한다. 플레이어가 컴포넌트 생성 직후 호출. */
 	void InitializeForOwner(AMyPlayer* Player);
 
