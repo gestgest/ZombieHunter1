@@ -62,6 +62,9 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
 	void OnRightMousePressed();
 	void OnRightMouseReleased();
 
+	// 직전 유효 커서 방향(월드, 수평). 커서 변환이 실패한 프레임에 이걸 재사용해 끊김 방지.
+	FVector LastCursorDir = FVector::ForwardVector;
+
 	// 마우스 커서가 가리키는 지면(플레이어 높이의 수평면) 위치. 카메라 광선과 평면의 교점.
 	bool GetCursorGroundLocation(FVector& OutLocation) const;
 
@@ -155,6 +158,14 @@ public:
 	/** 스틱 입력 데드존 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Input")
 	float InputDeadzone = 0.25f;
+
+	/** 마우스 이동: 커서가 캐릭터로부터 이 거리(cm) 안이면 이동 정지 — 가까울 때 방향이 뒤집혀 제자리 진동하는 것 방지 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Input")
+	float CursorStopRadius = 60.0f;
+
+	/** 켜면 화면에 이동 입력 크기 / 실제 속도 / MaxWalkSpeed를 출력한다. 이동 속도 튜닝용. 기본 꺼짐. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Debug")
+	bool bShowSpeedDebug = false;
 
 	/** 캐릭터가 조준/이동 방향으로 회전하는 속도 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Movement")

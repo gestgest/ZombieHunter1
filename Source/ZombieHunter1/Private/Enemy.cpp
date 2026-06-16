@@ -9,6 +9,8 @@
 
 #include "Navigation/PathFollowingComponent.h" //GetPathFollowingComponent에 있는 OnRequestFinished
 #include "AITypes.h"
+#include "GameFramework/CharacterMovementComponent.h" //죽을 때 이동 정지
+#include "Components/CapsuleComponent.h"             //죽을 때 충돌 해제
 
 
 // Sets default values
@@ -82,6 +84,10 @@ void AEnemy::TrackingPlayer()
 //추격을 완료했다면
 void AEnemy::MoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
 {
+	if (IsDead)
+	{
+		return; // 죽은 적은 추격 완료해도 공격하지 않음
+	}
 
 	if (Result.Code == EPathFollowingResult::Success)
 	{
@@ -132,6 +138,11 @@ void AEnemy::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotify
 //일단 때리는 애니메이션
 bool AEnemy::hit()
 {
+	if (IsDead)
+	{
+		return false; // 죽은 적은 데미지를 주지 않음 (몽타주 노티파이가 늦게 터져도 무효)
+	}
+
 	bool isAttack = false;
 
 	//여기에 함수 죄다 넣어야 함
@@ -216,11 +227,37 @@ void AEnemy::SetID(int id)
 
 void AEnemy::SetIsDead(bool value)
 {
+	const bool bWasDead = IsDead;
 	IsDead = value;
 
-	if (value)
+	// 살아있다 → 죽음으로 "전환"될 때만 사망 처리를 1회 실행.
+	// (이미 죽은 적을 또 때려 SetHP가 다시 불려도 DeadEnemySignal이 중복 발동하지 않게.)
+	if (value && !bWasDead)
 	{
-		DeadEnemySignal(enemy_id);
+		// 죽는 즉시 추격/공격/이동을 끊는다 — 죽으면서 쫓아오거나 때리는 버그 방지.
+		CanAttack = false;
+
+		if (aiController)
+		{
+			aiController->StopMovement();                       // 진행 중이던 추격 취소
+			aiController->ClearFocus(EAIFocusPriority::Gameplay); // 플레이어 주시 해제
+		}
+
+		StopAnimMontage(); // 진행 중이던 공격 몽타주 중단 (공격 노티파이 추가 발동 방지)
+
+		if (UCharacterMovementComponent* Move = GetCharacterMovement())
+		{
+			Move->StopMovementImmediately();
+			Move->DisableMovement();
+		}
+
+		// 시체가 플레이어를 밀거나 길을 막지 않도록 캡슐 충돌 해제
+		if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+		{
+			Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+
+		DeadEnemySignal(enemy_id); // BP: 사망 애님 재생 / 일정 시간 후 Destroy
 	}
 }
 

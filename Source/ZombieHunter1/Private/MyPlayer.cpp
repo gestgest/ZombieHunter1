@@ -230,17 +230,32 @@ void AMyPlayer::Tick(float DeltaTime)
     FVector2D MouseAim = FVector2D::ZeroVector;
     if (bRightMouseHeld || bLeftMouseHeld)
     {
+        // 이번 프레임의 커서 방향을 구한다.
+        FVector MoveDir = FVector::ZeroVector;
         FVector Cursor;
         if (GetCursorGroundLocation(Cursor))
         {
             FVector ToCursor = Cursor - GetActorLocation();
             ToCursor.Z = 0.0f;
-            if (ToCursor.Normalize()) // 커서가 캐릭터 위에 겹치면 방향 없음 → 입력 무시
+            // 커서가 StopRadius보다 멀 때만 이동(가까우면 방향이 뒤집혀 진동하므로 정지).
+            if (ToCursor.SizeSquared() > CursorStopRadius * CursorStopRadius && ToCursor.Normalize())
             {
-                const FVector2D Dir(ToCursor.Y, ToCursor.X);
-                if (bRightMouseHeld) { MouseMove = Dir; }
-                if (bLeftMouseHeld)  { MouseAim = Dir; }
+                LastCursorDir = ToCursor; // 유효 방향 캐시
+                MoveDir = ToCursor;
             }
+        }
+        else
+        {
+            // 커서→월드 변환이 실패한 프레임: 직전 방향을 유지해 미세 끊김(속도 손실)을 막는다.
+            MoveDir = LastCursorDir;
+        }
+
+        if (!MoveDir.IsNearlyZero())
+        {
+            // 월드 방향 (dx,dy) → 기존 스틱 포맷 FVector2D(Y=dx, X=dy)
+            const FVector2D Dir(MoveDir.Y, MoveDir.X);
+            if (bRightMouseHeld) { MouseMove = Dir; }
+            if (bLeftMouseHeld)  { MouseAim = Dir; }
         }
     }
 
@@ -252,6 +267,15 @@ void AMyPlayer::Tick(float DeltaTime)
     };
     const FVector2D Move = Largest(TouchMove, GamepadMove, MouseMove);
     const FVector2D Aim = Largest(TouchAim, GamepadAim, MouseAim);
+
+    // 속도 튜닝용 디버그(토글). 입력 크기 / 실제 속도 / 최고속도를 화면에 출력.
+    if (bShowSpeedDebug && GEngine)
+    {
+        const float MaxSpd = GetCharacterMovement() ? GetCharacterMovement()->MaxWalkSpeed : 0.0f;
+        GEngine->AddOnScreenDebugMessage(101, 0.0f, FColor::Green,
+            FString::Printf(TEXT("Move=%.2f  Vel=%.0f  MaxWalkSpeed=%.0f"),
+                Move.Size(), GetVelocity().Size(), MaxSpd));
+    }
 
     UpdateMovement(DeltaTime, Move);
     UpdateAimAndAttack(DeltaTime, Aim, Move);
