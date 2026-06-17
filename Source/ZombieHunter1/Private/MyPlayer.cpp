@@ -385,6 +385,73 @@ void AMyPlayer::SetWeaponMesh(USkeletalMesh* NewMesh)
     WeaponMeshComponent->SetVisibility(NewMesh != nullptr);
 }
 
+// 동료 섭외 — 플레이어 옆에 동료를 스폰해 따라다니며 싸우게 한다.
+void AMyPlayer::RecruitCompanion()
+{
+    if (!CompanionClass)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange,
+                TEXT("[Companion] CompanionClass가 비어있음 - BP_MyPlayer Details에서 BP_Companion 지정"));
+        }
+        return;
+    }
+
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return;
+    }
+
+    // 죽어서 사라진 동료는 목록에서 제거한 뒤 인원 체크.
+    Companions.RemoveAll([](const ACompanion* C) { return !IsValid(C); });
+    if (Companions.Num() >= MaxCompanions)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow,
+                FString::Printf(TEXT("[Companion] 최대 인원(%d명) 도달 - 더 섭외 불가"), MaxCompanions));
+        }
+        return;
+    }
+
+    // 플레이어 회전 기준으로 오프셋을 적용해 옆/뒤쪽에 스폰(여러 명이면 살짝씩 벌어지게).
+    const FRotator SpawnRot = GetActorRotation();
+    FVector Offset = CompanionSpawnOffset;
+    Offset.Y += Companions.Num() * 80.0f; // 두 번째부터는 옆으로 더 벌려 겹침 방지
+    const FVector SpawnLoc = GetActorLocation() + SpawnRot.RotateVector(Offset);
+    const FTransform SpawnTM(SpawnRot, SpawnLoc);
+
+    // 지연 스폰: BeginPlay가 돌기 전에 Leader/직업을 세팅해야
+    // 동료가 곧바로 플레이어를 따라오고 같은 직업으로 싸운다.
+    ACompanion* Companion = World->SpawnActorDeferred<ACompanion>(
+        CompanionClass, SpawnTM, this, nullptr,
+        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+
+    if (!Companion)
+    {
+        return;
+    }
+
+    Companion->Leader = this;
+    // 동료 BP에 직업이 안 정해져 있으면 플레이어와 같은 직업을 물려준다.
+    if (!Companion->DefaultJobClass)
+    {
+        Companion->DefaultJobClass = DefaultJobClass;
+    }
+
+    UGameplayStatics::FinishSpawningActor(Companion, SpawnTM);
+
+    Companions.Add(Companion);
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green,
+            FString::Printf(TEXT("[Companion] 동료 섭외 완료! (현재 %d명)"), Companions.Num()));
+    }
+}
+
 //모바일용
 void AMyPlayer::MoveTopDown(FVector2D Value)
 {
@@ -466,6 +533,10 @@ void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
     PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Released, this, &AMyPlayer::OnLeftMouseReleased);
     PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &AMyPlayer::OnRightMousePressed);
     PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Released, this, &AMyPlayer::OnRightMouseReleased);
+
+    // 디버그/테스트: C 키로 동료 섭외(게임패드 Y로도). 실제 발동 조건은 BP에서 RecruitCompanion 호출로 교체 가능.
+    PlayerInputComponent->BindKey(EKeys::C, IE_Pressed, this, &AMyPlayer::RecruitCompanion);
+    PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &AMyPlayer::RecruitCompanion);
 }
 
 void AMyPlayer::AddMoney()

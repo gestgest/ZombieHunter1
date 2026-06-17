@@ -214,7 +214,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
 	TSubclassOf<ACompanion> CompanionClass;
 
-	/** 동료를 플레이어 근처에 스폰해 따라다니게 한다. 발동 조건은 BP/디버그 키에서 이 함수를 호출해 처리. */
+	/** 최대 동료 수. 이 인원에 도달하면 더 섭외하지 않는다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
+	int32 MaxCompanions = 3;
+
+	/** 동료를 플레이어 기준 어디에 스폰할지 오프셋(cm). 살짝 옆/위로 띄워 바닥 끼임 방지. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
+	FVector CompanionSpawnOffset = FVector(-120.0f, 120.0f, 0.0f);
+
+	/** 현재 섭외해 둔 동료들(런타임). 죽으면 정리된다. */
+	UPROPERTY(BlueprintReadOnly, Category = "Companion")
+	TArray<ACompanion*> Companions;
+
+	/** 동료를 플레이어 근처에 스폰해 따라다니게 한다. 발동 조건은 BP/디버그 키(C)에서 이 함수를 호출해 처리. */
 	UFUNCTION(BlueprintCallable, Category = "Companion")
 	void RecruitCompanion();
 
