@@ -6,7 +6,7 @@
 #include "Jobs/JobComponent.h"
 #include "HealerJob.generated.h"
 
-class AMyPlayer;
+class ACombatCharacter;
 
 /**
  * 힐러(지원) 직업.
@@ -41,6 +41,6 @@ public:
 	virtual void Attack() override;
 
 protected:
-	/** 대상 캐릭터를 MaxHP까지 회복 */
-	void HealCharacter(AMyPlayer* Target);
+	/** 대상 아군(플레이어/동료)을 MaxHP까지 회복 */
+	void HealCharacter(ACombatCharacter* Target);
 };

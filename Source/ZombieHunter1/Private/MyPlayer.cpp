@@ -141,9 +141,7 @@ void AMyPlayer::BeginPlay()
 
     if (animInstance)
     {
-        animInstance->OnPlayMontageNotifyBegin.AddDynamic(
-            this, &AMyPlayer::OnNotifyBeginReceived
-        ); //신호
+        // 공격 Notify 배선은 베이스(ACombatCharacter)가 처리한다(→ HandleAttackNotify).
 
         // 공격 몽타주의 루트 모션이 캐릭터 이동을 덮어써서 공격 중 못 움직이는 문제 해결.
         // IgnoreRootMotion: 루트 모션을 추출해 메시는 제자리에 고정하되 이동에는 적용하지 않음.
@@ -336,7 +334,7 @@ void AMyPlayer::UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const 
         if (CurrentJob)
         {
             // 직업이 공격을 수행(보통 몽타주 재생). 몽타주 노티파이가
-            // OnNotifyBeginReceived -> CurrentJob->OnAttackNotify() 로 실제 타격 판정.
+            // (베이스)HandleAttackNotify -> CurrentJob->OnAttackNotify() 로 실제 타격 판정.
             CurrentJob->Attack();
         }
     }
@@ -639,7 +637,7 @@ void AMyPlayer::ReStart()
     }
 }
 
-void AMyPlayer::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload)
+void AMyPlayer::HandleAttackNotify(FName NotifyName)
 {
     // 실제 타격 판정/사운드는 현재 직업이 담당한다 (검사: 근접 스윕, 궁수: 발사체 등).
     if (CurrentJob)

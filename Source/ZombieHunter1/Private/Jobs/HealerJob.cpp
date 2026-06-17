@@ -1,7 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/HealerJob.h"
-#include "MyPlayer.h"
+#include "CombatCharacter.h"
+#include "Enemy.h"
 #include "Engine/World.h"
 
 UHealerJob::UHealerJob()
@@ -20,9 +21,8 @@ void UHealerJob::Attack()
 		return;
 	}
 
-	// 1) 시전자 자신 회복 — HP 시스템이 AMyPlayer에 있으므로 플레이어일 때만.
-	//    TODO(동료): 동료도 HP를 가지면 공용 체력 인터페이스로 일반화.
-	if (AMyPlayer* Self = Cast<AMyPlayer>(OwnerCharacter))
+	// 1) 시전자 자신 회복 — HP는 이제 공용 베이스(ACombatCharacter)에 있어 플레이어/동료 모두 가능.
+	if (ACombatCharacter* Self = Cast<ACombatCharacter>(OwnerCharacter))
 	{
 		HealCharacter(Self);
 	}
@@ -46,16 +46,16 @@ void UHealerJob::Attack()
 
 	for (const FHitResult& Hit : Hits)
 	{
-		// 적(AEnemy)은 무시하고, 아군(플레이어/동료)만 회복한다.
-		if (AMyPlayer* Ally = Cast<AMyPlayer>(Hit.GetActor()))
+		// 아군(플레이어/동료)만 회복한다 — 적(AEnemy)은 제외.
+		ACombatCharacter* Ally = Cast<ACombatCharacter>(Hit.GetActor());
+		if (Ally && !Ally->IsA(AEnemy::StaticClass()))
 		{
 			HealCharacter(Ally);
 		}
-		// TODO(동료 시스템): 동료 클래스도 여기서 Cast해서 HealCharacter로 회복
 	}
 }
 
-void UHealerJob::HealCharacter(AMyPlayer* Target)
+void UHealerJob::HealCharacter(ACombatCharacter* Target)
 {
 	if (!Target)
 	{

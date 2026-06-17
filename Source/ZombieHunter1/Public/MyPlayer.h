@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
+#include "CombatCharacter.h"
 #include "MyCanvas.h"
 #include "MyPlayer.generated.h"
 
@@ -19,7 +19,7 @@ class USkeletalMeshComponent;
 class ACompanion;
 
 UCLASS()
-class ZOMBIEHUNTER1_API AMyPlayer : public ACharacter
+class ZOMBIEHUNTER1_API AMyPlayer : public ACombatCharacter
 {
 	GENERATED_BODY()
 	UMyCanvas* CanvasWidget;
@@ -105,21 +105,19 @@ public:
 	// 블루프린트에서 읽고 쓸 수 있는 Money 변수
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
 	int32 Money;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
-	int32 HP;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
-	int32 Damage;
+	// HP / Damage 는 베이스(ACombatCharacter)로 이동.
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	USoundBase* AttackSound; //MS
 
 
 	// CheckDeath 함수가 리턴값이 없다면
+	// 파라미터 이름은 bDead — 베이스(ACombatCharacter)의 IsDead 멤버와 겹치면 UHT가 shadowing 에러를 냄.
 	UFUNCTION(BlueprintImplementableEvent, Category = "Player")
-	void CheckDeath(bool isDead);
+	void CheckDeath(bool bDead);
 
-	UFUNCTION() //몽타주의 delegate에 추가하려면 필수다.
-	void OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload);
+	// 공격 Notify → 현재 직업의 OnAttackNotify로 전달. 배선은 베이스(ACombatCharacter)가 담당.
+	virtual void HandleAttackNotify(FName NotifyName) override;
 
 
 
@@ -132,11 +130,9 @@ public:
 	void AddMoney();
 	
 
-	UFUNCTION(BlueprintCallable)
-	void AddHP(int add_hp);
+	virtual void AddHP(int32 add_hp) override;
 
-	UFUNCTION(BlueprintCallable)
-	void SetHP(int new_hp);
+	virtual void SetHP(int32 new_hp) override;
 
 	UFUNCTION(BlueprintCallable)
 	bool checkDead();
@@ -176,9 +172,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Combat")
 	float AttackInterval = 0.4f;
 
-	/** 공격 시 재생할 몽타주. 노티파이가 현재 직업의 OnAttackNotify()를 호출 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Combat")
-	UAnimMontage* AttackMontage = nullptr;
+	// 공격 몽타주(AttackMontage)는 베이스(ACombatCharacter)로 이동. 노티파이가 직업의 OnAttackNotify() 호출.
 
 	//////////////////////////////////////////////////////////////////////////
 	// 직업(Job) 시스템 — 시작 시 직업 1개를 생성해 부착한다.

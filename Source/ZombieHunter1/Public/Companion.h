@@ -1,25 +1,25 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
+#include "CombatCharacter.h"
 #include "Companion.generated.h"
 
 class UJobComponent;
 class AAIController;
 class AEnemy;
-class UAnimMontage;
-struct FBranchingPointNotifyPayload;
 
 /**
  * 아군 동료 AI 캐릭터.
  * 평소엔 리더(플레이어)를 졸졸 따라다니고(Following), 근처에 적이 나타나면
  * 그 적에게 다가가 직업(UJobComponent)으로 공격한다(Fighting).
  * 전투/이동 방식은 플레이어와 동일한 UJobComponent를 재활용한다 — 입력 대신 AI가 구동.
+ *
+ * 체력(HP)/데미지/죽음/공격몽타주 Notify 배선은 베이스(ACombatCharacter)가 제공한다.
  */
 UCLASS()
-class ZOMBIEHUNTER1_API ACompanion : public ACharacter
+class ZOMBIEHUNTER1_API ACompanion : public ACombatCharacter
 {
 	GENERATED_BODY()
 
@@ -50,9 +50,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
 	float AttackInterval = 0.6f;
 
-	/** 공격 몽타주(직업에 몽타주가 없을 때 이걸로 보충). */
+	/** 죽은 뒤 시체가 사라지기까지의 시간(초). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
-	UAnimMontage* AttackMontage = nullptr;
+	float CorpseLifeSpan = 3.0f;
 
 	/** 런타임 생성된 직업 컴포넌트 */
 	UPROPERTY(BlueprintReadOnly, Category = "Companion")
@@ -81,7 +81,9 @@ protected:
 	/** 대상 액터를 바라보도록 yaw 회전(공격 방향을 적에게 맞춤). */
 	void FaceActor(AActor* Target);
 
-	/** 공격 몽타주의 Notify를 직업의 OnAttackNotify로 전달(검사 근접 판정 등). */
-	UFUNCTION()
-	void OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload);
+	/** 공격 몽타주의 Notify를 직업의 OnAttackNotify로 전달(검사 근접 판정 등). 배선은 베이스가 담당. */
+	virtual void HandleAttackNotify(FName NotifyName) override;
+
+	/** 죽음 전환 — AI/공격을 끊고 잠시 후 시체를 제거한다. */
+	virtual void OnDeath() override;
 };

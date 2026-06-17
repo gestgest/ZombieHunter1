@@ -6,6 +6,7 @@
 #include "AIController.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
 
@@ -26,6 +27,8 @@ ACompanion::ACompanion()
 void ACompanion::BeginPlay()
 {
 	Super::BeginPlay();
+
+	SetHP(MaxHP); // 동료도 체력을 가진다(베이스). 적에게 맞으면 닳고 0이면 죽는다.
 
 	AICon = Cast<AAIController>(GetController());
 	if (!AICon)
@@ -49,19 +52,17 @@ void ACompanion::BeginPlay()
 		}
 	}
 
-	// 공격 몽타주 Notify → 직업의 OnAttackNotify (검사 근접 타격 판정 등).
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		if (UAnimInstance* Anim = MeshComp->GetAnimInstance())
-		{
-			Anim->OnPlayMontageNotifyBegin.AddDynamic(this, &ACompanion::OnNotifyBeginReceived);
-		}
-	}
+	// 공격 몽타주 Notify 배선은 베이스(ACombatCharacter)가 처리한다(→ HandleAttackNotify).
 }
 
 void ACompanion::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (IsDead)
+	{
+		return; // 죽었으면 추격/공격 로직 정지
+	}
 
 	TimeSinceAttack += DeltaTime;
 
@@ -161,10 +162,35 @@ void ACompanion::FaceActor(AActor* Target)
 	}
 }
 
-void ACompanion::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload)
+void ACompanion::HandleAttackNotify(FName NotifyName)
 {
 	if (CurrentJob)
 	{
 		CurrentJob->OnAttackNotify(NotifyName);
 	}
+}
+
+void ACompanion::OnDeath()
+{
+	// 추격/공격을 끊고, 시체가 길을 막지 않게 콜리전·이동을 끈 뒤 잠시 후 제거.
+	if (AICon)
+	{
+		AICon->StopMovement();
+		AICon->ClearFocus(EAIFocusPriority::Gameplay);
+	}
+
+	StopAnimMontage();
+
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->StopMovementImmediately();
+		Move->DisableMovement();
+	}
+
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	SetLifeSpan(CorpseLifeSpan); // 일정 시간 후 자동 Destroy (리더의 Companions 목록은 다음 섭외 때 정리됨)
 }

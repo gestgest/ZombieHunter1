@@ -1,10 +1,10 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "AIController.h"
-#include "GameFramework/Character.h"
+#include "CombatCharacter.h"
 
 //전방 선언
 class AAIController;
@@ -19,7 +19,7 @@ struct FBranchingPointNotifyPayload;
 
 
 UCLASS()
-class ZOMBIEHUNTER1_API AEnemy : public ACharacter
+class ZOMBIEHUNTER1_API AEnemy : public ACombatCharacter
 {
 	GENERATED_BODY()
 
@@ -27,7 +27,7 @@ class ZOMBIEHUNTER1_API AEnemy : public ACharacter
 	void DebugHPShow();
 
 	AAIController* aiController;
-	
+
 	float attackRange = 100.0f;
 	int enemy_id;
 	bool CanAttack;
@@ -41,6 +41,13 @@ protected:
 	virtual void BeginPlay() override;
 	//virtual void PossessedBy(AController* NewController) override;
 
+	// 공격 몽타주의 "Attack" Notify가 들어오면 자체 타격(hit)을 수행한다.
+	virtual void HandleAttackNotify(FName NotifyName) override;
+
+	// 죽음/부활 전환 처리 — HP/IsDead 전환은 베이스(ACombatCharacter)가 호출한다.
+	virtual void OnDeath() override;
+	virtual void OnRevive() override;
+
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -49,20 +56,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 
-	//변수
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Stats")
-	int Damage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Stats")
-	int32 HP;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly , Category = "Enemy|Stats")
-	bool IsDead;
-
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
-	UAnimMontage* AttackMontage;
+	//변수 — 체력/데미지/죽음/공격몽타주는 베이스(ACombatCharacter)로 이동.
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	USoundBase* AttackSound; //MS
@@ -79,14 +73,7 @@ public:
 	UFUNCTION() //몽타주의 delegate에 추가하려면 필수다.
 	void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
-	UFUNCTION() //몽타주의 delegate에 추가하려면 필수다.
-	void OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload);
-
-	void AddHP(int add_hp);
-	void SetHP(int new_hp);
 	void SetID(int id);
-
-	void SetIsDead(bool value);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Enemy")
 	void DeadEnemySignal(int index);

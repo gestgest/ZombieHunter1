@@ -39,9 +39,7 @@ void AEnemy::BeginPlay()
 		//AttackMontage-> 몽타주 세팅
 		animInstance->OnMontageEnded.AddDynamic(this, &AEnemy::OnMontageEnded);
 
-		animInstance->OnPlayMontageNotifyBegin.AddDynamic(
-			this, &AEnemy::OnNotifyBeginReceived
-		); //신호
+		// 공격 Notify 배선은 베이스(ACombatCharacter)가 처리한다(→ HandleAttackNotify).
 	}
 
 	if (aiController)
@@ -107,8 +105,8 @@ void AEnemy::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 	CanAttack = true;
 }
 
-//모든 노디파이 관리
-void AEnemy::OnNotifyBeginReceived(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload)
+//공격 몽타주 Notify 처리(베이스에서 호출) — "Attack" 신호에 자체 타격을 수행.
+void AEnemy::HandleAttackNotify(FName NotifyName)
 {
 	//UE_LOG(LogTemp, Log, TEXT("attack signal"));
 	if (NotifyName == FName("Attack"))
@@ -189,13 +187,14 @@ bool AEnemy::hit()
 
 	for (const FHitResult& hit : hitResults)
 	{
-		AMyPlayer* hitCharacter = Cast<AMyPlayer>(hit.GetActor());
-		if (hitCharacter && hitCharacter->IsPlayerControlled())
+		// 아군(플레이어/동료)만 때린다 — 적(AEnemy)끼리는 무시. 둘 다 ACombatCharacter라 공용으로 처리.
+		ACombatCharacter* Victim = Cast<ACombatCharacter>(hit.GetActor());
+		if (Victim && !Victim->IsDead && !Victim->IsA(AEnemy::StaticClass()))
 		{
-			//UE_LOG(LogTemp, Log, TEXT("Hit Player!"));
-			hitCharacter->AddHP(-Damage);
+			//UE_LOG(LogTemp, Log, TEXT("Hit Ally!"));
+			Victim->AddHP(-Damage);
 			FVector force = GetActorForwardVector() * 500 + FVector(0, 0, 100);
-			hitCharacter->LaunchCharacter(force, false, false);
+			Victim->LaunchCharacter(force, false, false);
 			isAttack = true;
 		}
 	}
@@ -207,75 +206,56 @@ void AEnemy::DebugHPShow()
 	UE_LOG(LogTemp, Log, TEXT("bobo : %d"), HP);
 }
 
-void AEnemy::AddHP(int add_hp)
-{
-	SetHP(this->HP + add_hp);
-}
-
-void AEnemy::SetHP(int new_hp)
-{
-	this->HP = new_hp;
-
-	//death
-	SetIsDead(this->HP <= 0);
-}
-
 void AEnemy::SetID(int id)
 {
 	this->enemy_id = id;
 }
 
-void AEnemy::SetIsDead(bool value)
+// 살아있음 → 죽음 전환 시 베이스가 1회 호출. (HP/IsDead 갱신은 베이스 담당)
+void AEnemy::OnDeath()
 {
-	const bool bWasDead = IsDead;
-	IsDead = value;
+	// 죽는 즉시 추격/공격/이동을 끊는다 — 죽으면서 쫓아오거나 때리는 버그 방지.
+	CanAttack = false;
 
-	// 살아있다 → 죽음으로 "전환"될 때만 사망 처리를 1회 실행.
-	// (이미 죽은 적을 또 때려 SetHP가 다시 불려도 DeadEnemySignal이 중복 발동하지 않게.)
-	if (value && !bWasDead)
+	if (aiController)
 	{
-		// 죽는 즉시 추격/공격/이동을 끊는다 — 죽으면서 쫓아오거나 때리는 버그 방지.
-		CanAttack = false;
-
-		if (aiController)
-		{
-			aiController->StopMovement();                       // 진행 중이던 추격 취소
-			aiController->ClearFocus(EAIFocusPriority::Gameplay); // 플레이어 주시 해제
-		}
-
-		StopAnimMontage(); // 진행 중이던 공격 몽타주 중단 (공격 노티파이 추가 발동 방지)
-
-		if (UCharacterMovementComponent* Move = GetCharacterMovement())
-		{
-			Move->StopMovementImmediately();
-			Move->DisableMovement();
-		}
-
-		// 시체가 플레이어를 밀거나 길을 막지 않도록 캡슐 충돌 해제
-		if (UCapsuleComponent* Capsule = GetCapsuleComponent())
-		{
-			Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		}
-
-		DeadEnemySignal(enemy_id); // BP: 사망 애님 재생 / 일정 시간 후 Destroy
+		aiController->StopMovement();                       // 진행 중이던 추격 취소
+		aiController->ClearFocus(EAIFocusPriority::Gameplay); // 플레이어 주시 해제
 	}
-	// 죽음 → 부활 "전환" (게임모드 풀에서 SetHP(5)로 재사용). 죽을 때 껐던 것들을 되돌린다.
-	// 이게 없으면 재활용된 적은 캡슐 콜리전이 꺼진 채라 공격 스윕(ECC_Pawn)에 안 맞고 피도 안 닳는다.
-	else if (!value && bWasDead)
+
+	StopAnimMontage(); // 진행 중이던 공격 몽타주 중단 (공격 노티파이 추가 발동 방지)
+
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
-		CanAttack = true;
+		Move->StopMovementImmediately();
+		Move->DisableMovement();
+	}
 
-		// 캡슐 충돌 복구 — 이게 핵심. 안 켜면 때려도 SweepMultiByChannel에 안 잡힘.
-		if (UCapsuleComponent* Capsule = GetCapsuleComponent())
-		{
-			Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		}
+	// 시체가 플레이어를 밀거나 길을 막지 않도록 캡슐 충돌 해제
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
 
-		// 이동 복구 — 죽을 때 DisableMovement()로 MOVE_None이 됐던 걸 다시 걷게.
-		if (UCharacterMovementComponent* Move = GetCharacterMovement())
-		{
-			Move->SetMovementMode(MOVE_Walking);
-		}
+	DeadEnemySignal(enemy_id); // BP: 사망 애님 재생 / 일정 시간 후 Destroy
+}
+
+// 죽음 → 부활 전환 시 베이스가 1회 호출 (게임모드 풀에서 SetHP(5)로 재사용).
+// 이게 없으면 재활용된 적은 캡슐 콜리전이 꺼진 채라 공격 스윕(ECC_Pawn)에 안 맞고 피도 안 닳는다.
+void AEnemy::OnRevive()
+{
+	CanAttack = true;
+
+	// 캡슐 충돌 복구 — 이게 핵심. 안 켜면 때려도 SweepMultiByChannel에 안 잡힘.
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+
+	// 이동 복구 — 죽을 때 DisableMovement()로 MOVE_None이 됐던 걸 다시 걷게.
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(MOVE_Walking);
 	}
 }
 
