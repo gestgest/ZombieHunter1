@@ -7,6 +7,8 @@
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
+#include "NavigationSystem.h" // 런타임 스폰한 바닥을 NavMesh에 반영
+#include "NavMesh/NavMeshBoundsVolume.h" // 플레이어 따라 옮길 나비 경계 볼륨
 
 
 //초기
@@ -63,6 +65,26 @@ void AInfiniteMapGenerator::BeginPlay()
 		LastPlayerChunk = Center;
 		bHasGenerated = true;
 	}
+
+	//플레이어 추격
+	// NavMeshBoundsVolume를 레벨에서 찾아 캐시하고, 플레이어 위치로 한 번 맞춰둔다.
+	if (bFollowNavBounds)
+	{
+		TArray<AActor*> Found;
+		UGameplayStatics::GetAllActorsOfClass(this, ANavMeshBoundsVolume::StaticClass(), Found);
+		if (Found.Num() > 0)
+		{
+			NavBoundsVolume = Cast<ANavMeshBoundsVolume>(Found[0]);
+
+			// 런타임에 SetActorLocation으로 옮기려면 브러시(루트) 컴포넌트가 Movable이어야 한다.
+			// (기본은 Static이라 "무버블이어야 합니다" 에러가 나고 이동이 무시됨)
+			if (NavBoundsVolume && NavBoundsVolume->GetRootComponent())
+			{
+				NavBoundsVolume->GetRootComponent()->SetMobility(EComponentMobility::Movable);
+			}
+		}
+		UpdateNavBoundsToPlayer();
+	}
 }
 
 
@@ -100,6 +122,34 @@ void AInfiniteMapGenerator::Tick(float DeltaTime)
 		UpdateChunks(Center);
 		LastPlayerChunk = Center;
 		bHasGenerated = true;
+
+		// 청크가 바뀐 시점에만(=플레이어가 한 청크 이동) NavMesh 경계도 플레이어로 따라 옮긴다.
+		// 매 프레임이 아니라 이 시점에만 해서 내비 리빌드 부담을 줄인다.
+		if (bFollowNavBounds)
+		{
+			UpdateNavBoundsToPlayer();
+		}
+	}
+}
+
+//플레이어를 추격하는 nav mesh
+void AInfiniteMapGenerator::UpdateNavBoundsToPlayer()
+{
+	if (!NavBoundsVolume || !TrackedPawn)
+	{
+		return;
+	}
+
+	// 볼륨을 플레이어 XY로 옮긴다(높이는 유지 — 점프해도 경계가 위아래로 안 흔들리게).
+	FVector Loc = TrackedPawn->GetActorLocation();
+	Loc.Z = NavBoundsVolume->GetActorLocation().Z;
+	NavBoundsVolume->SetActorLocation(Loc);
+
+	// 핵심: 위치만 바꾸면 NavMesh가 새 위치에 안 깔린다. 내비 시스템에 "경계 바뀜"을 통지해야
+	// 옮긴 영역에 NavMesh가 (인보커 기준으로) 다시 생성된다.
+	if (UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
+	{
+		NavSys->OnNavigationBoundsUpdated(NavBoundsVolume);
 	}
 }
 
@@ -253,6 +303,15 @@ AStaticMeshActor* AInfiniteMapGenerator::SpawnMeshActor(UStaticMesh* Mesh, const
 		}
 		Comp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		Comp->SetCollisionProfileName(TEXT("BlockAll"));
+
+		// NavMesh 반영 — 런타임 스폰 시 컴포넌트는 "메시 없는 상태"로 내비에 등록되므로,
+		// 메시/충돌을 다 세팅한 뒤 내비 관련성을 켜고 옥트리를 갱신해 줘야 이 바닥 위에 NavMesh가 깔린다.
+		// (이게 없으면 동적 NavMesh가 런타임 바닥을 못 잡아서 적/동료가 길찾기를 못 함)
+		Comp->SetCanEverAffectNavigation(true);
+		if (UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
+		{
+			NavSys->UpdateComponentInNavOctree(*Comp);
+		}
 	}
 
 	return Actor;

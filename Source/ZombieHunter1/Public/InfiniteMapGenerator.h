@@ -10,6 +10,7 @@ class UStaticMesh;
 class UMaterialInterface;
 class AStaticMeshActor;
 class APawn;
+class ANavMeshBoundsVolume;
 
 /** 한 청크가 스폰한 액터 묶음 (언로드 시 한 번에 Destroy) */
 USTRUCT()
@@ -60,6 +61,11 @@ protected:
 	/** 청크 갱신 주기(초). 매 프레임이 아니라 이 간격으로만 검사 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map")
 	float UpdateInterval = 0.25f;
+
+	/** 켜면 NavMeshBoundsVolume를 플레이어 따라 옮겨, 무한맵 어디로 가도 그 주변에 NavMesh가 깔리게 한다.
+	 *  (볼륨은 인보커 반경 + 여유를 덮을 정도면 충분 — 너무 거대하게 둘 필요 없음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|Navigation")
+	bool bFollowNavBounds = true;
 
 	/** 전역 시드. 같은 시드+같은 청크 좌표면 항상 동일하게 생성됨 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map")
@@ -119,9 +125,16 @@ private:
 	UPROPERTY()
 	TObjectPtr<APawn> TrackedPawn;
 
+	/** 따라다닐 NavMeshBoundsVolume (BeginPlay에서 레벨에서 찾아 캐시) */
+	UPROPERTY()
+	TObjectPtr<ANavMeshBoundsVolume> NavBoundsVolume;
+
 	float TimeSinceUpdate = 0.f;
 	bool bHasGenerated = false;
 	FIntPoint LastPlayerChunk = FIntPoint(MAX_int32, MAX_int32);
+
+	/** NavMeshBoundsVolume를 플레이어 위치로 옮기고 내비 시스템에 갱신을 통지 */
+	void UpdateNavBoundsToPlayer();
 
 	FIntPoint WorldToChunk(const FVector& WorldLocation) const;
 	void UpdateChunks(const FIntPoint& Center);
