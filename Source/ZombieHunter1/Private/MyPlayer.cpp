@@ -25,6 +25,7 @@
 #include "Components/ChildActorComponent.h" //무기 ChildActor(Weapon_BP)
 #include "Engine/SkeletalMesh.h"
 #include "Companion.h" //동료 섭외
+#include "Components/CapsuleComponent.h" //동료 스폰 시 캡슐 반높이
 
 // 모바일(안드로이드/iOS) 플랫폼이면 true. 터치 조이스틱 표시 여부 판단용.
 // 컴파일 타임 매크로라 PC 빌드에선 항상 false → 조이스틱 숨김.
@@ -420,7 +421,22 @@ void AMyPlayer::RecruitCompanion()
     const FRotator SpawnRot = GetActorRotation();
     FVector Offset = CompanionSpawnOffset;
     Offset.Y += Companions.Num() * 80.0f; // 두 번째부터는 옆으로 더 벌려 겹침 방지
-    const FVector SpawnLoc = GetActorLocation() + SpawnRot.RotateVector(Offset);
+    FVector SpawnLoc = GetActorLocation() + SpawnRot.RotateVector(Offset);
+
+    // 바닥에 맞춰 스폰 — 위에서 아래로 트레이스해 지면을 찾고, 그 위에 캡슐 반높이만큼 띄운다.
+    // (플레이어 Z 그대로 쓰면 캡슐 높이 차이로 바닥에 끼이거나 허공에서 떨어져 안 보일 수 있음)
+    {
+        const FVector TraceStart = SpawnLoc + FVector(0, 0, 200.0f);
+        const FVector TraceEnd = SpawnLoc - FVector(0, 0, 1000.0f);
+        FHitResult Hit;
+        FCollisionQueryParams Q;
+        Q.AddIgnoredActor(this);
+        if (World->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Q))
+        {
+            const float HalfHeight = GetCapsuleComponent() ? GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 88.0f;
+            SpawnLoc = Hit.ImpactPoint + FVector(0, 0, HalfHeight + 2.0f);
+        }
+    }
     const FTransform SpawnTM(SpawnRot, SpawnLoc);
 
     // 지연 스폰: BeginPlay가 돌기 전에 Leader/직업을 세팅해야

@@ -259,6 +259,24 @@ void AEnemy::SetIsDead(bool value)
 
 		DeadEnemySignal(enemy_id); // BP: 사망 애님 재생 / 일정 시간 후 Destroy
 	}
+	// 죽음 → 부활 "전환" (게임모드 풀에서 SetHP(5)로 재사용). 죽을 때 껐던 것들을 되돌린다.
+	// 이게 없으면 재활용된 적은 캡슐 콜리전이 꺼진 채라 공격 스윕(ECC_Pawn)에 안 맞고 피도 안 닳는다.
+	else if (!value && bWasDead)
+	{
+		CanAttack = true;
+
+		// 캡슐 충돌 복구 — 이게 핵심. 안 켜면 때려도 SweepMultiByChannel에 안 잡힘.
+		if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+		{
+			Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		}
+
+		// 이동 복구 — 죽을 때 DisableMovement()로 MOVE_None이 됐던 걸 다시 걷게.
+		if (UCharacterMovementComponent* Move = GetCharacterMovement())
+		{
+			Move->SetMovementMode(MOVE_Walking);
+		}
+	}
 }
 
 void AEnemy::SetAIController()
