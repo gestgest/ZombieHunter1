@@ -22,7 +22,11 @@ class ZOMBIEHUNTER1_API AZombieSlayerGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 	
+	// UPROPERTY 필수 — 안 붙이면 적/코인이 Destroy될 때 이 raw 포인터가 댕글링이 되어
+	// SpawnEnemy 등에서 역참조 시 크래시(액세스 위반)가 난다. UPROPERTY면 파괴 시 자동으로 null이 됨.
+	UPROPERTY()
 	TArray<AEnemy*> enemyPool;
+	UPROPERTY()
 	TArray<ACoin*> coinPool;
 	
 	int enemy_size = 0;

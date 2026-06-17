@@ -26,7 +26,9 @@ class ZOMBIEHUNTER1_API AEnemy : public ACombatCharacter
 	bool hit();
 	void DebugHPShow();
 
-	AAIController* aiController;
+	// UPROPERTY — 컨트롤러가 파괴되면 자동 null. 안 그러면 OnDeath 등에서 댕글링 역참조 위험.
+	UPROPERTY()
+	AAIController* aiController = nullptr;
 
 	float attackRange = 100.0f;
 	int enemy_id;

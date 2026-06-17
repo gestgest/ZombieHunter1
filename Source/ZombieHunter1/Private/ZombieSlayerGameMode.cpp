@@ -100,13 +100,18 @@ void AZombieSlayerGameMode::SpawnEnemy()
 
     for (; i < enemyPool.Num(); i++)
     {
+        // 파괴됐거나 무효한 풀 엔트리는 건너뛴다 (댕글링 포인터 역참조 = 크래시 방지).
+        if (!IsValid(enemyPool[i]))
+        {
+            continue;
+        }
         if (enemyPool[i]->IsHidden())
         {
             break;
         }
     }
-    //Max
-    if (i == enemyPool.Num())
+    //Max (또는 쓸 수 있는 적이 없음)
+    if (i >= enemyPool.Num())
     {
         return;
     }
@@ -155,14 +160,18 @@ void AZombieSlayerGameMode::spawnCoin()
 
     for (; i < coinPool.Num(); i++)
     {
+        if (!IsValid(coinPool[i]))
+        {
+            continue;
+        }
         if (coinPool[i]->IsHidden())
         {
             break;
         }
     }
 
-    //Max
-    if (i == coinPool.Num())
+    //Max (또는 쓸 수 있는 코인이 없음)
+    if (i >= coinPool.Num())
     {
         return;
     }
@@ -203,17 +212,19 @@ void AZombieSlayerGameMode::spawnCoin()
 void AZombieSlayerGameMode::DieEnemy(int index)
 {
     enemy_size--;
-    //enemyPool[index]->SetActorEnableCollision(false);
-    // => 너무 바깥 범위를 넘어간듯
-    enemyPool[index]->SetActorHiddenInGame(true);  // 비활성화
+    if (enemyPool.IsValidIndex(index) && IsValid(enemyPool[index]))
+    {
+        enemyPool[index]->SetActorHiddenInGame(true);  // 비활성화(풀로 반납)
+    }
 }
 
 //signal을 받아야지 될듯
 void AZombieSlayerGameMode::DestroyCoin(int index)
 {
     coin_size--;
-    //enemyPool[index]->SetActorEnableCollision(false);
-    // => 너무 바깥 범위를 넘어간듯
-    coinPool[index]->SetCanGet(false);
-    coinPool[index]->SetActorHiddenInGame(true);  // 비활성화
+    if (coinPool.IsValidIndex(index) && IsValid(coinPool[index]))
+    {
+        coinPool[index]->SetCanGet(false);
+        coinPool[index]->SetActorHiddenInGame(true);  // 비활성화
+    }
 }
