@@ -41,6 +41,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	float AttackInterval = 0.4f;
 
+	/** 동료 AI 교전 사거리(cm) — 적이 이 거리 안에 들면 멈춰서 공격한다.
+	 *  근접 직업은 짧게(붙어서 휘두름), 원거리 직업은 길게(멀리서 발사). 직업별로 BP/생성자에서 설정. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
+	float EngageRange = 500.0f;
+
 	/** 공격 시 재생할 몽타주 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	UAnimMontage* AttackMontage = nullptr;
@@ -49,9 +54,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	USoundBase* AttackSound = nullptr;
 
-	/** true면 스폰한 발사체의 사거리/적중범위 디버그를 화면에 그린다(궁수/마법사). 범위 튜닝용. 기본 꺼짐. */
+	/** true면 이 직업의 공격 판정 범위를 화면에 그린다. 검사=근접 스윕, 궁수/마법사=발사체 경로·적중범위.
+	 *  모든 직업 공통 토글(여기 베이스에 둠). 범위 튜닝/동작 확인용. 기본 꺼짐. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Debug")
-	bool bDebugProjectileRange = false;
+	bool bDebugAttack = false;
 
 	/** 이 직업이 들 무기 메시(검사=검, 궁수=활 등). 비우면 무기 숨김(예: 지팡이 없는 마법사).
 	 *  캐릭터에 이미 있는 무기 컴포넌트의 메시를 이걸로 교체한다. 직업 BP 서브클래스에서 지정. */

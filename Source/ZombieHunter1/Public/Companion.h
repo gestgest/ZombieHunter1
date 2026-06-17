@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -53,6 +53,8 @@ public:
 	/** 죽은 뒤 시체가 사라지기까지의 시간(초). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
 	float CorpseLifeSpan = 3.0f;
+
+	// 디버그 토글은 베이스(ACombatCharacter::bDebugCombat)로 올림 — 플레이어/적과 공용.
 
 	/** 런타임 생성된 직업 컴포넌트 */
 	UPROPERTY(BlueprintReadOnly, Category = "Companion")

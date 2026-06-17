@@ -9,6 +9,8 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
+#include "DrawDebugHelpers.h" //진단 디버그
+#include "Engine/Engine.h"     //GEngine 화면 메시지
 
 ACompanion::ACompanion()
 {
@@ -68,18 +70,34 @@ void ACompanion::Tick(float DeltaTime)
 
 	AEnemy* Target = FindNearestEnemy();
 
+	// 진단: 직업 유무 + 가장 가까운 적까지 거리. 화면 좌상단에 매 프레임 갱신.
+	//  job=NULL → DefaultJobClass 미설정 / target=NONE → 탐지반경(DetectRadius) 안에 적 없음.
+	if (bDebugCombat && GEngine)
+	{
+		const FString Msg = FString::Printf(TEXT("[Companion] job=%s  target=%s"),
+			CurrentJob ? *CurrentJob->JobName.ToString() : TEXT("NULL"),
+			Target ? *FString::Printf(TEXT("dist %.0f (engage %.0f)"),
+				FVector::Dist(GetActorLocation(), Target->GetActorLocation()),
+				(CurrentJob && CurrentJob->EngageRange > 0.0f) ? CurrentJob->EngageRange : AttackRange) : TEXT("NONE"));
+		GEngine->AddOnScreenDebugMessage((int32)GetUniqueID(), 0.0f, FColor::Cyan, Msg);
+	}
+
 	if (Target)
 	{
 		// === 교전 ===
 		State = EState::Fighting;
 
+		// 멈춰서 공격하는 거리 = 직업의 교전 사거리(근접=짧게, 원거리=길게). 직업 없으면 동료 AttackRange로 폴백.
+		// 이게 직업의 실제 사거리와 따로 놀면, 사거리 밖에서 멈춰 영영 공격을 안 하는 버그가 생긴다.
+		const float Engage = (CurrentJob && CurrentJob->EngageRange > 0.0f) ? CurrentJob->EngageRange : AttackRange;
+
 		const float Dist = FVector::Dist(GetActorLocation(), Target->GetActorLocation());
-		if (Dist > AttackRange)
+		if (Dist > Engage)
 		{
 			// 사거리 밖 → 적에게 접근 (조금 더 가깝게 멈추도록 수용 반경을 줄임)
 			if (AICon)
 			{
-				AICon->MoveToActor(Target, AttackRange * 0.8f);
+				AICon->MoveToActor(Target, Engage * 0.8f);
 			}
 		}
 		else
@@ -97,6 +115,17 @@ void ACompanion::Tick(float DeltaTime)
 			{
 				TimeSinceAttack = 0.0f;
 				CurrentJob->Attack(); // 직업이 공격(검 스윕/화살/파이어볼 등)
+
+				if (bDebugCombat) // 공격을 실제로 호출하는 순간 표시(노란 선 + 메시지)
+				{
+					DrawDebugLine(GetWorld(), GetActorLocation(),
+						Target->GetActorLocation(), FColor::Yellow, false, 0.4f, 0, 3.0f);
+					if (GEngine)
+					{
+						GEngine->AddOnScreenDebugMessage(-1, 0.4f, FColor::Yellow,
+							TEXT("[Companion] Attack() 호출!"));
+					}
+				}
 			}
 		}
 	}

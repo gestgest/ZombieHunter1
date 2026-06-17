@@ -89,7 +89,7 @@ AProjectile* UJobComponent::SpawnProjectileForward(TSubclassOf<AProjectile> Proj
 	if (Projectile)
 	{
 		Projectile->Damage = Damage; // 직업의 데미지를 발사체에 전달
-		Projectile->bDrawDebug = bDebugProjectileRange; // 사거리/적중범위 디버그 표시 여부 전달
+		Projectile->bDrawDebug = bDebugAttack; // 공격 디버그가 켜져 있으면 발사체 경로/적중범위도 그린다
 		Projectile->SetInitialSpeed(Speed);
 	}
 	return Projectile;

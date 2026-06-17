@@ -5,10 +5,14 @@
 #include "Enemy.h"
 #include "Engine/World.h"
 #include "CollisionShape.h"
+#include "DrawDebugHelpers.h" //근접 스윕 범위 디버그
 
 USwordsmanJob::USwordsmanJob()
 {
 	JobName = TEXT("Swordsman");
+
+	// 근접: 붙어서 휘둘러야 하므로 교전 사거리를 짧게(스윕 사거리 150보다 조금 안쪽).
+	EngageRange = 130.0f;
 
 	// 무기(WeaponMesh)는 BP 서브클래스(예: BP_SwordsmanJob)에서 직접 지정한다.
 }
@@ -51,6 +55,17 @@ void USwordsmanJob::OnAttackNotify(FName NotifyName)
 			hitEnemy->LaunchCharacter(force, false, false);
 			bDidHit = true;
 		}
+	}
+
+	// 디버그: 근접 스윕 범위(시작/끝 구체 + 경로)를 그린다. 적중=초록, 빗나감=빨강. 스윙마다 1초간.
+	if (bDebugAttack)
+	{
+		const FColor Color = bDidHit ? FColor::Green : FColor::Red;
+		const float Life = 1.0f;
+		UWorld* World = OwnerCharacter->GetWorld();
+		DrawDebugSphere(World, start, AttackRadius, 12, Color, false, Life, 0, 1.5f);
+		DrawDebugSphere(World, end, AttackRadius, 12, Color, false, Life, 0, 1.5f);
+		DrawDebugLine(World, start, end, Color, false, Life, 0, 1.5f);
 	}
 
 	// 적중했을 때만 공격 사운드 재생 (기존 동작 유지)

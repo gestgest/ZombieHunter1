@@ -45,6 +45,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	UAnimMontage* AttackMontage = nullptr;
 
+	/** true면 이 전투 캐릭터의 상태/공격 디버그를 화면에 그린다. 플레이어/동료/적 공용 토글. 기본 꺼짐. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Debug")
+	bool bDebugCombat = false;
+
 	// 파라미터 이름(add_hp/new_hp)은 기존 AMyPlayer 버전과 동일하게 유지한다.
 	// BP는 핀을 C++ 파라미터 이름(내부 FName)으로 저장하므로, 바꾸면 기존 BP 연결이 "핀 못 찾음"으로 깨진다.
 
