@@ -38,9 +38,7 @@ static bool IsMobilePlatform()
 #endif
 }
 
-
-
-// Sets default values
+//생성자
 AMyPlayer::AMyPlayer()
 {
  	// Tick() 업데이트 키는 변수
@@ -51,9 +49,8 @@ AMyPlayer::AMyPlayer()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	// 이동 방향 자동 회전 끄기 — 오른쪽 스틱(조준) 방향으로 수동 회전
+	//// 이동 방향 자동 회전 끄기 — 오른쪽 스틱(조준) 방향으로 수동 회전
 	GetCharacterMovement()->bOrientRotationToMovement = false;
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 640.0f, 0.0f);
 
 	// 비스듬한 탑다운 카메라 암
 	TopDownBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("TopDownBoom"));
@@ -77,13 +74,53 @@ AMyPlayer::AMyPlayer()
 	DefaultJobClass = USwordsmanJob::StaticClass();
 }
 
+
+
 // Called when the game starts or when spawned
 void AMyPlayer::BeginPlay()
 {
 	Super::BeginPlay();
-    SetMoney(0);
+
+    OnTopDownMode();
+
+    //플레이어 스타팅 찾기
+    if (AGameModeBase* gameMode = GetWorld()->GetAuthGameMode())
+    {
+         playerStart = gameMode->FindPlayerStart(controller);
+    }
+
+
+    UAnimInstance* animInstance = Cast<UAnimInstance>(GetMesh()->GetAnimInstance());
+
+    if (animInstance)
+    {
+        // 공격 Notify 배선은 베이스(ACombatCharacter)가 처리한다(→ HandleAttackNotify).
+
+        // 공격 몽타주의 루트 모션이 캐릭터 이동을 덮어써서 공격 중 못 움직이는 문제 해결.
+        // IgnoreRootMotion: 루트 모션을 추출해 메시는 제자리에 고정하되 이동에는 적용하지 않음.
+        // → 공격 중에도 AddMovementInput(이동 입력)이 그대로 캐릭터를 움직임.
+        animInstance->SetRootMotionMode(ERootMotionMode::IgnoreRootMotion);
+    }
+
+    ReplaceWeapon();
+
+
+    //SetMoney(0);
+    Restart(); 
     Damage = 1;
 
+    // 직업(Job) 컴포넌트 생성 — 시작 시 1개 고정.
+    if (!DefaultJobClass)
+    {
+        DefaultJobClass = USwordsmanJob::StaticClass();
+    }
+
+    SetJob();
+}
+
+void AMyPlayer::OnTopDownMode()
+{
+    //카메라
     // 에디터에서 수정한 카메라 값 적용
     if (TopDownBoom)
     {
@@ -108,8 +145,7 @@ void AMyPlayer::BeginPlay()
         }
     }
 
-    // 무한 맵 생성기는 레벨에 직접 배치해 사용한다(폰에서 스폰하지 않음).
-    // → 월드 생성 책임을 레벨/게임모드 쪽에 두고, Details 패널에서 설정·디버그.
+
 
     controller = Cast<APlayerController>(GetController());
 
@@ -128,71 +164,51 @@ void AMyPlayer::BeginPlay()
         InputMode.SetHideCursorDuringCapture(false);
         controller->SetInputMode(InputMode);
     }
+}
 
-    // 터치 조이스틱 자동 생성 (위젯 BP 없이 C++가 만들어 화면에 띄움)
-    CreateTouchJoysticks();
 
-    if (AGameModeBase* gameMode = GetWorld()->GetAuthGameMode())
+// 무기는 ChildActorComponent(Weapon_BP) → BP_sword 액터 → 그 안의 SkeletalMeshComponent 구조다.
+// 그 안쪽 메시 컴포넌트를 찾아 캐시한다(직업이 이 메시만 교체). 직업 생성보다 먼저 찾아둬야 함.
+void AMyPlayer::ReplaceWeapon()
+{
+    TArray<UChildActorComponent*> ChildComps;
+    GetComponents<UChildActorComponent>(ChildComps);
+    for (UChildActorComponent* CAC : ChildComps)
     {
-         playerStart = gameMode->FindPlayerStart(controller);
-    }
-
-    UAnimInstance* animInstance = Cast<UAnimInstance>(GetMesh()->GetAnimInstance());
-
-    if (animInstance)
-    {
-        // 공격 Notify 배선은 베이스(ACombatCharacter)가 처리한다(→ HandleAttackNotify).
-
-        // 공격 몽타주의 루트 모션이 캐릭터 이동을 덮어써서 공격 중 못 움직이는 문제 해결.
-        // IgnoreRootMotion: 루트 모션을 추출해 메시는 제자리에 고정하되 이동에는 적용하지 않음.
-        // → 공격 중에도 AddMovementInput(이동 입력)이 그대로 캐릭터를 움직임.
-        animInstance->SetRootMotionMode(ERootMotionMode::IgnoreRootMotion);
-    }
-
-    // 무기는 ChildActorComponent(Weapon_BP) → BP_sword 액터 → 그 안의 SkeletalMeshComponent 구조다.
-    // 그 안쪽 메시 컴포넌트를 찾아 캐시한다(직업이 이 메시만 교체). 직업 생성보다 먼저 찾아둬야 함.
-    {
-        TArray<UChildActorComponent*> ChildComps;
-        GetComponents<UChildActorComponent>(ChildComps);
-        for (UChildActorComponent* CAC : ChildComps)
+        if (!CAC)
         {
-            if (!CAC)
-            {
-                continue;
-            }
-            AActor* Child = CAC->GetChildActor();
-            if (!Child)
-            {
-                continue;
-            }
-            USkeletalMeshComponent* InnerMesh = Child->FindComponentByClass<USkeletalMeshComponent>();
-            if (!InnerMesh)
-            {
-                continue;
-            }
-            // 'Weapon' 태그가 붙은 ChildActorComponent를 우선 사용, 없으면 첫 번째를 폴백으로.
-            if (CAC->ComponentHasTag(WeaponComponentTag))
-            {
-                WeaponMeshComponent = InnerMesh;
-                break;
-            }
-            if (!WeaponMeshComponent)
-            {
-                WeaponMeshComponent = InnerMesh;
-            }
+            continue;
         }
-        if (!WeaponMeshComponent && GEngine)
+        AActor* Child = CAC->GetChildActor();
+        if (!Child)
         {
-            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Orange,
-                TEXT("[Weapon] 무기 ChildActor(예: Weapon_BP) 안의 SkeletalMeshComponent를 못 찾음"));
+            continue;
+        }
+        USkeletalMeshComponent* InnerMesh = Child->FindComponentByClass<USkeletalMeshComponent>();
+        if (!InnerMesh)
+        {
+            continue;
+        }
+        // 'Weapon' 태그가 붙은 ChildActorComponent를 우선 사용, 없으면 첫 번째를 폴백으로.
+        if (CAC->ComponentHasTag(WeaponComponentTag))
+        {
+            WeaponMeshComponent = InnerMesh;
+            break;
+        }
+        if (!WeaponMeshComponent)
+        {
+            WeaponMeshComponent = InnerMesh;
         }
     }
-
-    // 직업(Job) 컴포넌트 생성 — 시작 시 1개 고정.
-    if (!DefaultJobClass)
+    if (!WeaponMeshComponent && GEngine)
     {
-        DefaultJobClass = USwordsmanJob::StaticClass();
+        GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Orange,
+            TEXT("[Weapon] 무기 ChildActor(예: Weapon_BP) 안의 SkeletalMeshComponent를 못 찾음"));
     }
+}
+
+void AMyPlayer::SetJob()
+{
     CurrentJob = NewObject<UJobComponent>(this, DefaultJobClass);
     if (CurrentJob)
     {
@@ -213,7 +229,18 @@ void AMyPlayer::BeginPlay()
     }
 }
 
-// Called every frame
+
+
+
+
+
+
+
+
+
+
+
+// update 왠만하면 여기선 bp함수를 쓰지마라
 void AMyPlayer::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
@@ -287,6 +314,10 @@ void AMyPlayer::Tick(float DeltaTime)
     }
 }
 
+
+
+
+///////////////////////////      Tick :: Move, AIM      /////////////////////
 void AMyPlayer::UpdateMovement(float DeltaTime, const FVector2D& Move)
 {
     if (Move.SizeSquared() <= InputDeadzone * InputDeadzone)
@@ -340,7 +371,7 @@ void AMyPlayer::UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const 
     }
 }
 
-
+//우클릭시 커서 위치 땅 값을 반환하고 땅이 있는지
 bool AMyPlayer::GetCursorGroundLocation(FVector& OutLocation) const
 {
     APlayerController* PC = Cast<APlayerController>(GetController());
@@ -371,6 +402,15 @@ bool AMyPlayer::GetCursorGroundLocation(FVector& OutLocation) const
     return true;
 }
 
+
+
+
+
+
+
+
+/////////////////////////////////////  Weapon   ////////////////////////////////////
+
 void AMyPlayer::SetWeaponMesh(USkeletalMesh* NewMesh)
 {
     if (!WeaponMeshComponent)
@@ -384,6 +424,10 @@ void AMyPlayer::SetWeaponMesh(USkeletalMesh* NewMesh)
     WeaponMeshComponent->SetVisibility(NewMesh != nullptr);
 }
 
+
+
+
+////////////////////////////////       Companion         ///////////////////
 // 동료 섭외 — 플레이어 옆에 동료를 스폰해 따라다니며 싸우게 한다.
 void AMyPlayer::RecruitCompanion()
 {
@@ -466,71 +510,9 @@ void AMyPlayer::RecruitCompanion()
     }
 }
 
-//모바일용
-void AMyPlayer::MoveTopDown(FVector2D Value)
-{
-    // 카메라가 yaw 0으로 고정(월드 +X를 바라봄)이므로 컨트롤러 회전을 무시하고 월드축으로 이동.
-    // UpdateMovement(게임패드)와 동일한 매핑: 스틱/키 위(+Y) = 화면 위(+X), 오른쪽(+X) = +Y
-    AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value.Y);
-    AddMovementInput(FVector(0.0f, 1.0f, 0.0f), Value.X);
-}
 
-void AMyPlayer::SetMoveInput(FVector2D Value) { TouchMove = Value; }
-void AMyPlayer::SetAimInput(FVector2D Value) { TouchAim = Value; }
-
-void AMyPlayer::OnMoveJoystickMoved(FVector2D Value) { SetMoveInput(Value); }
-void AMyPlayer::OnAimJoystickMoved(FVector2D Value) { SetAimInput(Value); }
-
-void AMyPlayer::CreateTouchJoysticks()
-{
-    if (!bCreateTouchJoysticks)
-    {
-        return;
-    }
-
-    APlayerController* PC = Cast<APlayerController>(GetController());
-    if (!PC)
-    {
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, TEXT("[Joystick] PlayerController 없음 - 생성 실패"));
-        }
-        return;
-    }
-
-    //조이스틱
-    //OnMoveJoystickMoved
-    //OnAimJoystickMoved
-}
-
-void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
-{
-    CanvasWidget = CW;
-
-    // 캔버스에 배치된 조이스틱의 입력을 내 콜백에 바인딩.
-    // (플레이어가 캔버스를 들고 있으므로 캔버스가 거꾸로 플레이어를 찾을 필요 없음)
-    if (CanvasWidget)
-    {
-        // 모바일(안드로이드/iOS)에서만 터치 조이스틱을 표시한다. PC에선 숨겨서
-        // 마우스(로스트아크식) 조작만 쓰고, 클릭이 조이스틱 위젯에 먹히지 않게 한다.
-        // Collapsed = 화면에서 빠지고 히트테스트도 안 됨 → 마우스 클릭이 게임으로 전달.
-        const ESlateVisibility JoystickVis =
-            IsMobilePlatform() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
-
-        if (CanvasWidget->MoveJoystick)
-        {
-            CanvasWidget->MoveJoystick->SetVisibility(JoystickVis);
-            CanvasWidget->MoveJoystick->OnJoystickMoved.AddUniqueDynamic(this, &AMyPlayer::OnMoveJoystickMoved);
-        }
-        if (CanvasWidget->AimJoystick)
-        {
-            CanvasWidget->AimJoystick->SetVisibility(JoystickVis);
-            CanvasWidget->AimJoystick->OnJoystickMoved.AddUniqueDynamic(this, &AMyPlayer::OnAimJoystickMoved);
-        }
-    }
-}
-
-// Input
+///////////////////////////////////   Input    ////////////////////////////////
+// 
 void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -553,22 +535,40 @@ void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
     PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &AMyPlayer::RecruitCompanion);
 }
 
+void AMyPlayer::SetMoveInput(FVector2D Value) { TouchMove = Value; }
+void AMyPlayer::SetAimInput(FVector2D Value) { TouchAim = Value; }
+
+void AMyPlayer::OnMoveJoystickMoved(FVector2D Value) { SetMoveInput(Value); }
+void AMyPlayer::OnAimJoystickMoved(FVector2D Value) { SetAimInput(Value); }
+
+void AMyPlayer::OnMoveX(float Value) { GamepadMove.X = Value; }
+void AMyPlayer::OnMoveY(float Value) { GamepadMove.Y = Value; }
+void AMyPlayer::OnAimX(float Value) { GamepadAim.X = Value; }
+void AMyPlayer::OnAimY(float Value) { GamepadAim.Y = Value; }
+
+// 마우스 버튼: 누르고 있는 동안만 작동(로스트아크식 조작)
+void AMyPlayer::OnLeftMousePressed() { bLeftMouseHeld = true; }
+void AMyPlayer::OnLeftMouseReleased() { bLeftMouseHeld = false; }
+void AMyPlayer::OnRightMousePressed() { bRightMouseHeld = true; }
+void AMyPlayer::OnRightMouseReleased() { bRightMouseHeld = false; }
+
+
+
+
+//////////////////////////////////      Property        //////////////////////////
 void AMyPlayer::AddMoney()
 {
-    //GetTargetLocation();
     SetMoney(Money + 1);
 }
 
 void AMyPlayer::SetMoney(int value)
 {
-    //GetTargetLocation();
     this->Money = value;
 
     if (CanvasWidget)
     {
         CanvasWidget->UpdateCoinText(this->Money);
     }
-
 }
 
 void AMyPlayer::AddHP(int add_hp)
@@ -609,7 +609,7 @@ bool AMyPlayer::checkDead()
     {
         GetCharacterMovement()->SetMovementMode(MOVE_Walking);
         CanvasWidget->SetVisRestartButton(false); //버튼 off
-        
+
         if (controller)
         {
             // 마우스 커서를 보이게 하고, 게임+UI 입력 모드로 둠
@@ -626,6 +626,7 @@ bool AMyPlayer::checkDead()
     return isDead;
 }
 
+//...?
 void AMyPlayer::ReStart()
 {
     SetHP(5);
@@ -637,6 +638,15 @@ void AMyPlayer::ReStart()
     }
 }
 
+//모바일용
+void AMyPlayer::MoveTopDown(FVector2D Value)
+{
+    // 카메라가 yaw 0으로 고정(월드 +X를 바라봄)이므로 컨트롤러 회전을 무시하고 월드축으로 이동.
+    // UpdateMovement(게임패드)와 동일한 매핑: 스틱/키 위(+Y) = 화면 위(+X), 오른쪽(+X) = +Y
+    AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value.Y);
+    AddMovementInput(FVector(0.0f, 1.0f, 0.0f), Value.X);
+}
+
 void AMyPlayer::HandleAttackNotify(FName NotifyName)
 {
     // 실제 타격 판정/사운드는 현재 직업이 담당한다 (검사: 근접 스윕, 궁수: 발사체 등).
@@ -646,13 +656,29 @@ void AMyPlayer::HandleAttackNotify(FName NotifyName)
     }
 }
 
-void AMyPlayer::OnMoveX(float Value) { GamepadMove.X = Value; }
-void AMyPlayer::OnMoveY(float Value) { GamepadMove.Y = Value; }
-void AMyPlayer::OnAimX(float Value) { GamepadAim.X = Value; }
-void AMyPlayer::OnAimY(float Value) { GamepadAim.Y = Value; }
+void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
+{
+    CanvasWidget = CW;
 
-// 마우스 버튼: 누르고 있는 동안만 작동(로스트아크식 조작)
-void AMyPlayer::OnLeftMousePressed() { bLeftMouseHeld = true; }
-void AMyPlayer::OnLeftMouseReleased() { bLeftMouseHeld = false; }
-void AMyPlayer::OnRightMousePressed() { bRightMouseHeld = true; }
-void AMyPlayer::OnRightMouseReleased() { bRightMouseHeld = false; }
+    // 캔버스에 배치된 조이스틱의 입력을 내 콜백에 바인딩.
+    // (플레이어가 캔버스를 들고 있으므로 캔버스가 거꾸로 플레이어를 찾을 필요 없음)
+    if (CanvasWidget)
+    {
+        // 모바일(안드로이드/iOS)에서만 터치 조이스틱을 표시한다. PC에선 숨겨서
+        // 마우스(로스트아크식) 조작만 쓰고, 클릭이 조이스틱 위젯에 먹히지 않게 한다.
+        // Collapsed = 화면에서 빠지고 히트테스트도 안 됨 → 마우스 클릭이 게임으로 전달.
+        const ESlateVisibility JoystickVis =
+            IsMobilePlatform() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+
+        if (CanvasWidget->MoveJoystick)
+        {
+            CanvasWidget->MoveJoystick->SetVisibility(JoystickVis);
+            CanvasWidget->MoveJoystick->OnJoystickMoved.AddUniqueDynamic(this, &AMyPlayer::OnMoveJoystickMoved);
+        }
+        if (CanvasWidget->AimJoystick)
+        {
+            CanvasWidget->AimJoystick->SetVisibility(JoystickVis);
+            CanvasWidget->AimJoystick->OnJoystickMoved.AddUniqueDynamic(this, &AMyPlayer::OnAimJoystickMoved);
+        }
+    }
+}

@@ -128,6 +128,13 @@ public:
 	//AddCoin
 	UFUNCTION(BlueprintCallable)
 	void AddMoney();
+
+
+
+
+	void OnTopDownMode();
+	void ReplaceWeapon();
+	void SetJob();
 	
 
 	virtual void AddHP(int32 add_hp) override;
@@ -140,6 +147,8 @@ public:
 
 	void ReStart();
 	void SetMoney(int Money);
+
+
 
 	//////////////////////////////////////////////////////////////////////////
 	// 탑다운 트윈스틱 설정 / 입력
@@ -239,10 +248,6 @@ public:
 
 	//////////////////////////////////////////////////////////////////////////
 	// 터치 조이스틱 (C++가 자동 생성해서 화면에 띄움 — 위젯 BP 불필요)
-
-	/** 켜면 게임 시작 시 좌/우 가상 조이스틱을 자동 생성해 화면에 표시 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Touch")
-	bool bCreateTouchJoysticks = true;
 
 	/** (선택) 조이스틱 베이스 텍스처. 비우면 반투명 박스로 표시 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Touch")
