@@ -511,7 +511,7 @@ void AMyPlayer::RecruitCompanion()
 }
 
 
-///////////////////////////////////   Input    ////////////////////////////////
+///////////////////////////////////      Input    ////////////////////////////////
 // 
 void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -531,8 +531,8 @@ void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
     PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Released, this, &AMyPlayer::OnRightMouseReleased);
 
     // 디버그/테스트: C 키로 동료 섭외(게임패드 Y로도). 실제 발동 조건은 BP에서 RecruitCompanion 호출로 교체 가능.
-    PlayerInputComponent->BindKey(EKeys::C, IE_Pressed, this, &AMyPlayer::RecruitCompanion);
-    PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &AMyPlayer::RecruitCompanion);
+    //PlayerInputComponent->BindKey(EKeys::C, IE_Pressed, this, &AMyPlayer::RecruitCompanion);
+    //PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &AMyPlayer::RecruitCompanion); //게임패드
 }
 
 void AMyPlayer::SetMoveInput(FVector2D Value) { TouchMove = Value; }
