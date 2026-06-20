@@ -148,6 +148,10 @@ public:
 	void ReStart();
 	void SetMoney(int Money);
 
+	/** 돈을 Amount만큼 소비 시도. 충분하면 차감하고 true, 부족하면 아무것도 안 하고 false. */
+	UFUNCTION(BlueprintCallable, Category = "Player|Stats")
+	bool TrySpendMoney(int32 Amount);
+
 
 
 	//////////////////////////////////////////////////////////////////////////

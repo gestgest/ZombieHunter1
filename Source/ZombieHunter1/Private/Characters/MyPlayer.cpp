@@ -571,6 +571,20 @@ void AMyPlayer::SetMoney(int value)
     }
 }
 
+bool AMyPlayer::TrySpendMoney(int32 Amount)
+{
+    if (Amount <= 0)
+    {
+        return true; // 비용이 0 이하면 그냥 통과
+    }
+    if (Money < Amount)
+    {
+        return false; // 돈 부족 → 아무것도 안 함
+    }
+    SetMoney(Money - Amount); // 차감 + 코인 UI 갱신
+    return true;
+}
+
 void AMyPlayer::AddHP(int add_hp)
 {
     SetHP(this->HP + add_hp);

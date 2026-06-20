@@ -53,29 +53,46 @@ void ACompanionSpawnZone::Tick(float DeltaTime)
 	}
 
 	const bool bActive = !bConsumed && CooldownRemaining <= 0.0f;
-	const float OldProgress = Progress;
 
-	if (bPlayerInside && bActive)
+	if (bPlayerInside && bActive && IsValid(CurrentPlayer))
 	{
-		// 서 있으면 채운다.
-		Progress = FMath::Min(1.0f, Progress + DeltaTime / FMath::Max(0.1f, FillDuration));
-
-		if (Progress >= 1.0f)
+		// 발판 위에 서 있으면 일정 간격마다 "돈을 소비"해서 게이지를 채운다.
+		PaymentTimer += DeltaTime;
+		if (PaymentTimer >= PaymentInterval)
 		{
-			CompleteZone();
+			PaymentTimer = 0.0f;
+
+			// 마지막 한 칸은 남은 금액(MaxMoney - PaidMoney)만 받아 초과 결제를 막는다.
+			const int32 Payment = FMath::Min(MoneyPerPayment, MaxMoney - PaidMoney);
+
+			if (Payment > 0 && CurrentPlayer->TrySpendMoney(Payment))
+			{
+				// 결제 성공 → 누적 돈 증가, 게이지는 PaidMoney / MaxMoney로 계산.
+				PaidMoney += Payment;
+				Progress = FMath::Clamp((float)PaidMoney / (float)MaxMoney, 0.0f, 1.0f);
+				OnProgressChanged(Progress);
+
+				if (PaidMoney >= MaxMoney)
+				{
+					CompleteZone();
+				}
+			}
+			else
+			{
+				// 돈이 부족하면 게이지를 올리지 않고 그대로 둔다(이미 낸 돈만큼은 유지).
+				OnInsufficientFunds();
+				if (GEngine)
+				{
+					GEngine->AddOnScreenDebugMessage(7001, 1.0f, FColor::Red,
+						FString::Printf(TEXT("[SpawnZone] 돈 부족! (%d원 필요)"), MoneyPerPayment));
+				}
+			}
 		}
 	}
-	else if (Progress > 0.0f && DrainRateScale > 0.0f)
+	else
 	{
-		// 비었으면 줄인다(채우는 속도 × DrainRateScale).
-		const float DrainPerSec = (1.0f / FMath::Max(0.1f, FillDuration)) * DrainRateScale;
-		Progress = FMath::Max(0.0f, Progress - DeltaTime * DrainPerSec);
-	}
-
-	// 게이지가 실제로 바뀌었을 때만 BP 이벤트 통지
-	if (!FMath::IsNearlyEqual(OldProgress, Progress))
-	{
-		OnProgressChanged(Progress);
+		// 발판에서 벗어나면 결제 타이머만 초기화한다. 이미 채운 게이지는 유지(낸 돈이 아까우니까).
+		PaymentTimer = 0.0f;
 	}
 
 	if (bShowDebugGauge)
@@ -88,7 +105,8 @@ void ACompanionSpawnZone::CompleteZone()
 {
 	AMyPlayer* Recruiter = CurrentPlayer;
 
-	// 게이지 리셋 후 동료 소환(C키 섭외와 동일 로직 재사용).
+	// 게이지/누적 돈 리셋 후 동료 소환(C키 섭외와 동일 로직 재사용).
+	PaidMoney = 0;
 	Progress = 0.0f;
 	OnProgressChanged(0.0f);
 
