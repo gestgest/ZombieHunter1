@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/SwordsmanJob.h"
-#include "MyPlayer.h"
-#include "Enemy.h"
+#include "Characters/MyPlayer.h"
+#include "Characters/Enemy.h"
 #include "Engine/World.h"
 #include "CollisionShape.h"
 #include "DrawDebugHelpers.h" //근접 스윕 범위 디버그

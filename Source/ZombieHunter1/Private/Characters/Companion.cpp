@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Companion.h"
+#include "Characters/Companion.h"
 #include "Jobs/JobComponent.h"
-#include "Enemy.h"
+#include "Characters/Enemy.h"
 #include "AIController.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/CharacterMovementComponent.h"

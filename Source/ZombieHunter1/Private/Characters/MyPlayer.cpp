@@ -1,8 +1,8 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "MyPlayer.h"
-#include "Enemy.h"
+#include "Characters/MyPlayer.h"
+#include "Characters/Enemy.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/InputComponent.h" //BindAxisKey
@@ -16,7 +16,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "NavigationInvokerComponent.h"
-#include "VirtualJoystick.h"
+#include "UI/VirtualJoystick.h"
 #include "Engine/Engine.h" //GEngine 화면 디버그
 #include "Jobs/JobComponent.h"
 #include "Jobs/SwordsmanJob.h"
@@ -24,7 +24,7 @@
 #include "Components/SkeletalMeshComponent.h" //무기 컴포넌트 메시 교체
 #include "Components/ChildActorComponent.h" //무기 ChildActor(Weapon_BP)
 #include "Engine/SkeletalMesh.h"
-#include "Companion.h" //동료 섭외
+#include "Characters/Companion.h" //동료 섭외
 #include "Components/CapsuleComponent.h" //동료 스폰 시 캡슐 반높이
 
 // 모바일(안드로이드/iOS) 플랫폼이면 true. 터치 조이스틱 표시 여부 판단용.
@@ -106,7 +106,7 @@ void AMyPlayer::BeginPlay()
 
 
     //SetMoney(0);
-    Restart(); 
+    ReStart(); // 주의: 엔진 내장 APawn::Restart()가 아니라 우리 부활 함수(대문자 S). SetHP(5)로 시작 시 사망 UI를 끈다.
     Damage = 1;
 
     // 직업(Job) 컴포넌트 생성 — 시작 시 1개 고정.
@@ -597,7 +597,7 @@ bool AMyPlayer::checkDead()
         StopAnimMontage();
 
         GetCharacterMovement()->DisableMovement();
-        CanvasWidget->SetVisRestartButton(true); //버튼 on
+        if (CanvasWidget) { CanvasWidget->SetVisRestartButton(true); } //버튼 on
 
         if (controller)
         {
@@ -608,7 +608,7 @@ bool AMyPlayer::checkDead()
     else
     {
         GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-        CanvasWidget->SetVisRestartButton(false); //버튼 off
+        if (CanvasWidget) { CanvasWidget->SetVisRestartButton(false); } //버튼 off
 
         if (controller)
         {
@@ -680,5 +680,10 @@ void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
             CanvasWidget->AimJoystick->SetVisibility(JoystickVis);
             CanvasWidget->AimJoystick->OnJoystickMoved.AddUniqueDynamic(this, &AMyPlayer::OnAimJoystickMoved);
         }
+
+        // 위젯이 막 연결된 시점에 현재 HP 기준으로 사망 UI/HP바를 동기화한다.
+        // BeginPlay 때는 CanvasWidget이 아직 null이라 버튼을 못 껐을 수 있으므로 여기서 확정.
+        CanvasWidget->SetVisRestartButton(HP <= 0);
+        CanvasWidget->SetProgressUISize(FVector2D(HP * 100, 50));
     }
 }

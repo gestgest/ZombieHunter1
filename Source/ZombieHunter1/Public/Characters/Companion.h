@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CombatCharacter.h"
+#include "Characters/CombatCharacter.h"
 #include "Companion.generated.h"
 
 class UJobComponent;

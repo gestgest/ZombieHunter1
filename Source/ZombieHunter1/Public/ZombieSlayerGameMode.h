@@ -5,9 +5,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "Enemy.h"
+#include "Characters/Enemy.h"
 #include "Coin.h"
-#include "MyPlayer.h"
+#include "Characters/MyPlayer.h"
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/TargetPoint.h"  // ATargetPoint 클래스 정의

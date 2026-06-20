@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CombatCharacter.h"
-#include "MyCanvas.h"
+#include "Characters/CombatCharacter.h"
+#include "UI/MyCanvas.h"
 #include "MyPlayer.generated.h"
 
 class USpringArmComponent;

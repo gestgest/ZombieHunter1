@@ -1,10 +1,10 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "MyCanvas.h"
-#include "MyPlayer.h"
+#include "UI/MyCanvas.h"
+#include "Characters/MyPlayer.h"
 #include "Kismet/GameplayStatics.h" //getCharacter, sound
-#include "VirtualJoystick.h"
+#include "UI/VirtualJoystick.h"
 #include "Engine/Engine.h" //GEngine 화면 디버그
 
 void UMyCanvas::NativeConstruct()

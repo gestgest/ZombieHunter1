@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
-#include "CombatCharacter.h"
+#include "Characters/CombatCharacter.h"
 
 //전방 선언
 class AAIController;

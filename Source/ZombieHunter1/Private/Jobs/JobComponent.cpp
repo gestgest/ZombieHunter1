@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/JobComponent.h"
-#include "MyPlayer.h"
+#include "Characters/MyPlayer.h"
 #include "Projectiles/Projectile.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"

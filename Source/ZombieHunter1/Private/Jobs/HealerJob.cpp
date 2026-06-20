@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/HealerJob.h"
-#include "CombatCharacter.h"
-#include "Enemy.h"
+#include "Characters/CombatCharacter.h"
+#include "Characters/Enemy.h"
 #include "Engine/World.h"
 
 UHealerJob::UHealerJob()

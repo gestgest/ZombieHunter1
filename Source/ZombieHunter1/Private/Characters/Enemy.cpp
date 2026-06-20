@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Enemy.h"
-#include "MyPlayer.h"
+#include "Characters/Enemy.h"
+#include "Characters/MyPlayer.h"
 #include "NavigationSystem.h"  // 내비게이션 사용 시
 #include "Kismet/GameplayStatics.h" //getCharacter, sound
 //#include "Kismet/KismetSystemLibrary.h" //ray
