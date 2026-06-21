@@ -307,6 +307,9 @@ void AMyPlayer::Tick(float DeltaTime)
     UpdateMovement(DeltaTime, Move);
     UpdateAimAndAttack(DeltaTime, Aim, Move);
 
+    // 다리를 이동 방향으로 돌리기 위한 각도 갱신(상체/조준은 액터 회전 그대로). AnimBP가 LegYawOffset을 읽는다.
+    UpdateLegYawOffset(DeltaTime);
+
     // 직업 패시브(힐러 자가 회복 등) — 살아있을 때만 (위에서 HP<=0이면 return)
     if (CurrentJob)
     {
@@ -369,6 +372,28 @@ void AMyPlayer::UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const 
             CurrentJob->Attack();
         }
     }
+}
+
+// 다리(하체)를 실제 이동 방향으로 돌리기 위한 yaw 오프셋을 계산한다.
+// 액터(상체/조준)는 조준 방향을 보고 있으므로, 속도 방향과 액터 회전의 차이가 곧 "다리를 더 돌려야 할 각도"다.
+// AnimBP가 이 값으로 pelvis(+)·spine_01(-)을 회전시켜 다리만 이동 방향을 향하게 한다.
+void AMyPlayer::UpdateLegYawOffset(float DeltaTime)
+{
+    FVector Vel = GetVelocity();
+    Vel.Z = 0.0f;
+
+    // 거의 정지 상태면 다리를 몸과 정렬(오프셋 0)로 부드럽게 되돌린다 → 서서 조준하면 다리도 정면.
+    float TargetOffset = 0.0f;
+    if (Vel.SizeSquared() > 1.0f)
+    {
+        const float MoveYaw = Vel.Rotation().Yaw;
+        const float ActorYaw = GetActorRotation().Yaw;
+        // 액터 정면 기준 이동 방향의 상대 각도(-180~180). 전방 애니 1개라 허리 꺾임 방지로 ±Max로 제한.
+        TargetOffset = FMath::FindDeltaAngleDegrees(ActorYaw, MoveYaw);
+        TargetOffset = FMath::Clamp(TargetOffset, -LegYawMaxAngle, LegYawMaxAngle);
+    }
+
+    LegYawOffset = FMath::FInterpTo(LegYawOffset, TargetOffset, DeltaTime, LegYawInterpSpeed);
 }
 
 //우클릭시 커서 위치 땅 값을 반환하고 땅이 있는지

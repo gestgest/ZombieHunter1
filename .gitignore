@@ -52,11 +52,13 @@ Plugins/**/Binaries/*
 # Builds
 Build/*
 
+# Resource
 # large files => SVN
 Content/Characters/*
 Content/StarterContent/*
 Content/ElfArden/*
 Content/SKnight_modular/*
+Content/Assassin/*
 Content/FreeModularMagicSFX/*
 
 

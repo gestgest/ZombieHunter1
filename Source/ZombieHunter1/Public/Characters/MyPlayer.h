@@ -181,6 +181,27 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Movement")
 	float TurnInterpSpeed = 12.0f;
 
+	//////////////////////////////////////////////////////////////////////////
+	// 하체/상체 분리 애니메이션 — "다리는 이동 방향, 상체는 조준 방향"
+	// 액터(몸)는 조준 방향을 보므로 상체/무기/발사는 그대로 둔다. 다리만 이동 방향으로 돌리려고
+	// AnimBP에서 pelvis를 +LegYawOffset, spine_01을 -LegYawOffset 만큼 회전시킨다(상체는 원위치 복귀).
+	// → 전방 워크 애니메이션 1개만 있어도 옆/뒤로 걸을 때 다리가 이동 방향을 향한다.
+
+	/** 다리를 이동 방향으로 돌리기 위한 yaw 오프셋(도). 액터 정면(=조준) 기준 이동 방향과의 각도. AnimBP가 읽는다. */
+	UPROPERTY(BlueprintReadOnly, Category = "TopDown|Animation")
+	float LegYawOffset = 0.0f;
+
+	/** LegYawOffset 보간 속도(클수록 다리가 이동 방향으로 빨리 돌아감) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Animation")
+	float LegYawInterpSpeed = 10.0f;
+
+	/** LegYawOffset 최대 각도(도). 전방 애니 1개라 이 이상은 허리가 부러져 보여서 막는다(보통 90). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Animation")
+	float LegYawMaxAngle = 90.0f;
+
+	/** 매 프레임 속도 방향과 액터 회전으로 LegYawOffset을 갱신한다(Tick에서 호출). */
+	void UpdateLegYawOffset(float DeltaTime);
+
 	/** 조준 중 자동 공격 간격(초) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Combat")
 	float AttackInterval = 0.4f;
