@@ -26,6 +26,8 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACombatCharacter
 	APlayerController* controller;
 	AActor* playerStart;
 
+	//나머지 잔잔바리 비공개 함수는 여기에
+
 	/** 비스듬한 탑다운 카메라 암 (BP의 기존 CameraBoom과 이름 충돌 방지) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TopDown|Camera", meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* TopDownBoom;
@@ -52,6 +54,8 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACombatCharacter
 	void OnAimX(float Value);
 	void OnAimY(float Value);
 
+	// 마우스(로스트아크식) 입력을 스틱 포맷으로 변환해 채워서 내보낸다(출력 파라미터).
+	void MouseInput(FVector2D& MouseMove, FVector2D& MouseAim);
 	void UpdateMovement(float DeltaTime, const FVector2D& Move);
 	void UpdateAimAndAttack(float DeltaTime, const FVector2D& Aim, const FVector2D& Move);
 
@@ -83,7 +87,7 @@ class ZOMBIEHUNTER1_API AMyPlayer : public ACombatCharacter
 	UFUNCTION()
 	void OnAimJoystickMoved(FVector2D Value);
 
-
+	
 public:
 	// Sets default values for this character's properties
 	AMyPlayer();

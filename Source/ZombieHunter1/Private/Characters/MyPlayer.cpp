@@ -237,9 +237,6 @@ void AMyPlayer::SetJob()
 
 
 
-
-
-
 // update 왠만하면 여기선 bp함수를 쓰지마라
 void AMyPlayer::Tick(float DeltaTime)
 {
@@ -255,38 +252,10 @@ void AMyPlayer::Tick(float DeltaTime)
     // 커서 방향 (dx,dy) → FVector2D(Y=dx, X=dy). UpdateMovement/UpdateAimAndAttack의 축 매핑과 일치.
     FVector2D MouseMove = FVector2D::ZeroVector;
     FVector2D MouseAim = FVector2D::ZeroVector;
-    if (bRightMouseHeld || bLeftMouseHeld)
-    {
-        // 이번 프레임의 커서 방향을 구한다.
-        FVector MoveDir = FVector::ZeroVector;
-        FVector Cursor;
-        if (GetCursorGroundLocation(Cursor))
-        {
-            FVector ToCursor = Cursor - GetActorLocation();
-            ToCursor.Z = 0.0f;
-            // 커서가 StopRadius보다 멀 때만 이동(가까우면 방향이 뒤집혀 진동하므로 정지).
-            if (ToCursor.SizeSquared() > CursorStopRadius * CursorStopRadius && ToCursor.Normalize())
-            {
-                LastCursorDir = ToCursor; // 유효 방향 캐시
-                MoveDir = ToCursor;
-            }
-        }
-        else
-        {
-            // 커서→월드 변환이 실패한 프레임: 직전 방향을 유지해 미세 끊김(속도 손실)을 막는다.
-            MoveDir = LastCursorDir;
-        }
 
-        if (!MoveDir.IsNearlyZero())
-        {
-            // 월드 방향 (dx,dy) → 기존 스틱 포맷 FVector2D(Y=dx, X=dy)
-            const FVector2D Dir(MoveDir.Y, MoveDir.X);
-            if (bRightMouseHeld) { MouseMove = Dir; }
-            if (bLeftMouseHeld)  { MouseAim = Dir; }
-        }
-    }
+    MouseInput(MouseMove, MouseAim);
 
-    // 게임패드 / 터치 / 마우스 중 가장 크게 입력된 쪽을 사용 (전부 지원)
+    // 게임패드 / 터치 / 마우스 중 가장 크게 입력된 쪽을 사용 (전부 지원) => 람다임
     auto Largest = [](const FVector2D& A, const FVector2D& B, const FVector2D& C) -> FVector2D
     {
         const FVector2D& AB = (A.SizeSquared() >= B.SizeSquared()) ? A : B;
@@ -321,6 +290,78 @@ void AMyPlayer::Tick(float DeltaTime)
 
 
 ///////////////////////////      Tick :: Move, AIM      /////////////////////
+void AMyPlayer::MouseInput(FVector2D & MouseMove, FVector2D & MouseAim)
+{
+    if (bRightMouseHeld || bLeftMouseHeld)
+    {
+        // 이번 프레임의 커서 방향을 구한다.
+        FVector MoveDir = FVector::ZeroVector;
+        FVector Cursor;
+        if (GetCursorGroundLocation(Cursor)) //커서 지면에 닿았는지 여부
+        {
+            FVector ToCursor = Cursor - GetActorLocation();
+            ToCursor.Z = 0.0f;
+            // 커서가 StopRadius보다 멀 때만 이동(가까우면 방향이 뒤집혀 진동하므로 정지).
+            if (ToCursor.SizeSquared() > CursorStopRadius * CursorStopRadius && ToCursor.Normalize())
+            {
+                LastCursorDir = ToCursor; // 유효 방향 캐시
+                MoveDir = ToCursor;
+            }
+        }
+        else
+        {
+            // 커서→월드 변환이 실패한 프레임
+            // 직전 방향을 유지해 미세 끊김(속도 손실)을 막는다.
+            MoveDir = LastCursorDir;
+        }
+
+        if (!MoveDir.IsNearlyZero())
+        {
+            // 월드 방향 (dx,dy) → 기존 스틱 포맷 FVector2D(Y=dx, X=dy)
+            const FVector2D Dir(MoveDir.Y, MoveDir.X);
+            if (bRightMouseHeld) { MouseMove = Dir; }
+            if (bLeftMouseHeld) { MouseAim = Dir; }
+        }
+    }
+}
+
+//우클릭시 커서 위치 땅 값을 반환하고 땅이 있는지
+bool AMyPlayer::GetCursorGroundLocation(FVector& OutLocation) const
+{
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!PC)
+    {
+        return false;
+    }
+
+    // 화면의 마우스 위치를 월드 광선(원점+방향)으로 역투영
+    FVector WorldOrigin, WorldDirection;
+
+    // 커서가 화면 밖이거나 마우스 위치 없음
+    if (!PC->DeprojectMousePositionToWorld(WorldOrigin, WorldDirection))
+    {
+        return false; 
+    }
+
+    // 플레이어 발 높이의 수평면(z = 플레이어 Z)과 카메라 광선의 교점을 구함.
+    // 밟을 수 있는 지형인지.
+    if (FMath::IsNearlyZero(WorldDirection.Z))
+    {
+        return false; // 광선이 수평이면 평면과 안 만남
+    }
+    const float T = (GetActorLocation().Z - WorldOrigin.Z) / WorldDirection.Z;
+
+    // 평면이 카메라 뒤쪽
+    if (T < 0.0f)
+    {
+        return false; 
+    }
+    OutLocation = WorldOrigin + WorldDirection * T; //out cursor position
+    return true;
+}
+
+
+
 void AMyPlayer::UpdateMovement(float DeltaTime, const FVector2D& Move)
 {
     if (Move.SizeSquared() <= InputDeadzone * InputDeadzone)
@@ -394,37 +435,6 @@ void AMyPlayer::UpdateLegYawOffset(float DeltaTime)
     }
 
     LegYawOffset = FMath::FInterpTo(LegYawOffset, TargetOffset, DeltaTime, LegYawInterpSpeed);
-}
-
-//우클릭시 커서 위치 땅 값을 반환하고 땅이 있는지
-bool AMyPlayer::GetCursorGroundLocation(FVector& OutLocation) const
-{
-    APlayerController* PC = Cast<APlayerController>(GetController());
-    if (!PC)
-    {
-        return false;
-    }
-
-    // 화면의 마우스 위치를 월드 광선(원점+방향)으로 역투영
-    FVector WorldOrigin, WorldDirection;
-    if (!PC->DeprojectMousePositionToWorld(WorldOrigin, WorldDirection))
-    {
-        return false; // 커서가 화면 밖이거나 마우스 위치 없음
-    }
-
-    // 플레이어 발 높이의 수평면(z = 플레이어 Z)과 카메라 광선의 교점을 구함.
-    // 지면 콜리전에 의존하지 않아 어디를 가리켜도 안정적인 목표점이 나온다.
-    if (FMath::IsNearlyZero(WorldDirection.Z))
-    {
-        return false; // 광선이 수평이면 평면과 안 만남
-    }
-    const float T = (GetActorLocation().Z - WorldOrigin.Z) / WorldDirection.Z;
-    if (T < 0.0f)
-    {
-        return false; // 평면이 카메라 뒤쪽
-    }
-    OutLocation = WorldOrigin + WorldDirection * T;
-    return true;
 }
 
 

@@ -82,3 +82,9 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+# Visual Studio project upgrade/conversion artifacts
+UpgradeLog*.htm
+Backup/
+Backup*/
+_UpgradeReport_Files/
