@@ -62,10 +62,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void AddMoney();
 
-	void OnTopDownMode();
-	void ReplaceWeapon();
-	void SetJob();
-
 	virtual void AddHP(int32 add_hp) override;
 
 	virtual void SetHP(int32 new_hp) override;
@@ -74,7 +70,6 @@ public:
 	bool checkDead();
 
 	void ReStart();
-	void SetMoney(int Money);
 
 	/** 돈을 Amount만큼 소비 시도. 충분하면 차감하고 true, 부족하면 아무것도 안 하고 false. */
 	UFUNCTION(BlueprintCallable, Category = "Player|Stats")
@@ -144,6 +139,12 @@ private:
 
 	UFUNCTION()
 	void OnAimJoystickMoved(FVector2D Value);
+
+	// 초기 셋업 / 내부 헬퍼 (BeginPlay 등 내부에서만 호출)
+	void OnTopDownMode();
+	void ReplaceWeapon();
+	void SetJob();
+	void SetMoney(int Money);
 
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
