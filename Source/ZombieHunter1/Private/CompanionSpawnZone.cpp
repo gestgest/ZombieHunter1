@@ -28,6 +28,7 @@ void ACompanionSpawnZone::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 유니티의 OntriggerEnter, Exit 함수 설정
 	if (TriggerBox)
 	{
 		TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ACompanionSpawnZone::OnTriggerBeginOverlap);
@@ -134,6 +135,8 @@ void ACompanionSpawnZone::CompleteZone()
 	}
 }
 
+
+//스폰존에 들어간다면
 void ACompanionSpawnZone::OnTriggerBeginOverlap(UPrimitiveComponent* /*OverlappedComp*/, AActor* OtherActor,
 	UPrimitiveComponent* /*OtherComp*/, int32 /*OtherBodyIndex*/, bool /*bFromSweep*/, const FHitResult& /*Sweep*/)
 {
@@ -147,6 +150,7 @@ void ACompanionSpawnZone::OnTriggerBeginOverlap(UPrimitiveComponent* /*Overlappe
 	bPlayerInside = true;
 }
 
+//스폰존에 나간다면
 void ACompanionSpawnZone::OnTriggerEndOverlap(UPrimitiveComponent* /*OverlappedComp*/, AActor* OtherActor,
 	UPrimitiveComponent* /*OtherComp*/, int32 /*OtherBodyIndex*/)
 {
@@ -175,6 +179,7 @@ void ACompanionSpawnZone::OnTriggerEndOverlap(UPrimitiveComponent* /*OverlappedC
 	}
 }
 
+// debug : 그리는 함수
 void ACompanionSpawnZone::DrawDebugGauge()
 {
 	UWorld* World = GetWorld();

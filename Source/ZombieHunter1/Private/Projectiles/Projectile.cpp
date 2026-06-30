@@ -1,6 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#include "Projectiles/Projectile.h"
+﻿#include "Projectiles/Projectile.h"
 #include "Characters/Enemy.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -101,9 +99,9 @@ void AProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* O
 		return; // 적이 아니면 통과 (벽/플레이어 등 무시)
 	}
 
+	// 범위 폭발: 적중 지점 주변의 모든 적에게 피해 (마법사 파이어볼 등)
 	if (ExplosionRadius > 0.0f)
 	{
-		// 범위 폭발: 적중 지점 주변의 모든 적에게 피해 (마법사 파이어볼 등)
 		TArray<FOverlapResult> Overlaps;
 		FCollisionShape Sphere = FCollisionShape::MakeSphere(ExplosionRadius);
 		FCollisionQueryParams Params;

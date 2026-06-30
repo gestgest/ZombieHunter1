@@ -31,8 +31,9 @@ protected:
 public:
 	virtual void Tick(float DeltaTime) override;
 
-	//////////////////////////////////////////////////////////////////////////
-	// 컴포넌트
+	////////////////////////////////////////////////////////////////////////////////////
+	// Component
+	////////////////////////////////////////////////////////////////////////////////////
 
 	/** 밟는 영역(트리거). 이 박스 안에 플레이어가 들어오면 게이지가 찬다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SpawnZone")
@@ -42,9 +43,11 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SpawnZone")
 	UStaticMeshComponent* PadMesh;
 
-	//////////////////////////////////////////////////////////////////////////
-	// 튜닝 값
 
+
+	///////////////////////////////////////////////////////////////////////////////////
+	// Variable
+	///////////////////////////////////////////////////////////////////////////////////
 
 	/** 게이지 한 칸(결제 1회)당 소비하는 돈(원). 이만큼 돈이 없으면 게이지가 안 오른다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpawnZone", meta = (ClampMin = "1"))
@@ -62,13 +65,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpawnZone", meta = (ClampMin = "0.0"))
 	float Cooldown = 5.0f;
 
-
-	/** 켜면 발판 위에 기본 디버그 게이지 바를 그려 BP 위젯 없이도 진행도를 확인할 수 있다. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpawnZone|Debug")
-	bool bShowDebugGauge = true;
-
-	//////////////////////////////////////////////////////////////////////////
-
 	/** 현재 게이지(0.0 ~ 1.0). PaidMoney / MaxMoney로 계산되는 표시용 값. */
 	UPROPERTY(BlueprintReadOnly, Category = "SpawnZone")
 	float Progress = 0.0f;
@@ -81,38 +77,46 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpawnZone", meta = (ClampMin = "1"))
 	int32 MaxMoney = 5;
 
-
-
-
-
-
 	/** 현재 구역 안에 플레이어가 서 있는지. */
 	UPROPERTY(BlueprintReadOnly, Category = "SpawnZone")
 	bool bPlayerInside = false;
 
-	//////////////////////////////////////////////////////////////////////////
-	// 블루프린트 이벤트 (UI 연동용)
+	///////////////////////////////////////////////////////////////////////////////////
+	// Variable - debug
+	///////////////////////////////////////////////////////////////////////////////////
 
-	/** 게이지가 바뀔 때마다 호출(NewProgress: 0~1). 진행 바 위젯 갱신에 사용. */
+	/** 켜면 발판 위에 기본 디버그 게이지 바를 그려 BP 위젯 없이도 진행도를 확인할 수 있다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpawnZone|Debug")
+	bool bShowDebugGauge = true;
+
+
+
+	///////////////////////////////////////////////////////////////////////////////////
+	// 블루프린트 이벤트 (UI 연동용)
+	///////////////////////////////////////////////////////////////////////////////////
+
+	//게이지가 바뀔 때마다 호출  (NewProgress: 0~1).
 	UFUNCTION(BlueprintImplementableEvent, Category = "SpawnZone")
 	void OnProgressChanged(float NewProgress);
 
-	/** 게이지가 가득 차서 동료를 소환한 직후 호출. 이펙트/사운드 연출에 사용. */
+	// 게이지가 가득 차서 동료를 소환한 직후 호출. 이펙트/사운드 연출에 사용.
 	UFUNCTION(BlueprintImplementableEvent, Category = "SpawnZone")
 	void OnZoneCompleted(AMyPlayer* Recruiter);
 
-	/** 발판 위에 있지만 돈이 부족해 결제에 실패한 순간 호출. "돈 부족" UI/사운드에 사용. */
+	// 발판 위에 있지만 돈이 부족해 결제에 실패한 순간 호출. "돈 부족" UI/사운드에 사용.
 	UFUNCTION(BlueprintImplementableEvent, Category = "SpawnZone")
 	void OnInsufficientFunds();
 
+
+
 protected:
-	/** 게이지가 가득 찼을 때 호출 — 안에 있는 플레이어의 RecruitCompanion()을 실행. */
+	// 게이지가 가득 찼을 때 호출 — 안에 있는 플레이어의 RecruitCompanion()을 실행.
 	void CompleteZone();
 
-	/** bShowDebugGauge가 켜져 있을 때 발판 위에 진행도 바를 그린다. */
+	// bShowDebugGauge가 켜져 있을 때 발판 위에 진행도 바를 그린다. 
 	void DrawDebugGauge();
 
-	/** 트리거 오버랩 콜백 */
+	// 트리거 오버랩 콜백
 	UFUNCTION()
 	void OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& Sweep);

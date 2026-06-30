@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -29,11 +29,15 @@ class ZOMBIEHUNTER1_API UJobComponent : public UActorComponent
 public:
 	UJobComponent();
 
-	/** 직업 이름 (UI/디버그용) */
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//Variables
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// 직업 이름
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Job")
 	FName JobName = TEXT("Job");
 
-	/** 한 번 적중 시 가하는 피해량 */
+	// 피해량
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	int32 Damage = 1;
 
@@ -41,28 +45,37 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	float AttackInterval = 0.4f;
 
-	/** 동료 AI 교전 사거리(cm) — 적이 이 거리 안에 들면 멈춰서 공격한다.
-	 *  근접 직업은 짧게(붙어서 휘두름), 원거리 직업은 길게(멀리서 발사). 직업별로 BP/생성자에서 설정. */
+	// 동료 AI 교전 사거리(cm) — 적이 이 거리 안에 들면 멈춰서 공격한다.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	float EngageRange = 500.0f;
 
-	/** 공격 시 재생할 몽타주 */
+	// 공격 시 재생할 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	UAnimMontage* AttackMontage = nullptr;
 
-	/** 공격 적중 시 재생할 사운드 */
+	// 공격 적중 시 재생할 사운드
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	USoundBase* AttackSound = nullptr;
+
+	/** 이 직업이 들 무기 메시(검사=검, 궁수=활 등). 비우면 무기 숨김(예: 지팡이 없는 마법사).
+	 *  캐릭터에 이미 있는 무기 컴포넌트의 메시를 이걸로 교체한다. 직업 BP 서브클래스에서 지정. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Job|Weapon")
+	USkeletalMesh* WeaponMesh = nullptr;
+
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//Variables - debug
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/** true면 이 직업의 공격 판정 범위를 화면에 그린다. 검사=근접 스윕, 궁수/마법사=발사체 경로·적중범위.
 	 *  모든 직업 공통 토글(여기 베이스에 둠). 범위 튜닝/동작 확인용. 기본 꺼짐. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Debug")
 	bool bDebugAttack = false;
 
-	/** 이 직업이 들 무기 메시(검사=검, 궁수=활 등). 비우면 무기 숨김(예: 지팡이 없는 마법사).
-	 *  캐릭터에 이미 있는 무기 컴포넌트의 메시를 이걸로 교체한다. 직업 BP 서브클래스에서 지정. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Job|Weapon")
-	USkeletalMesh* WeaponMesh = nullptr;
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//Function
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/** 소유 캐릭터(플레이어/동료)를 연결한다. 소유자가 컴포넌트 생성 직후 호출. */
 	void InitializeForOwner(ACharacter* Owner);
@@ -77,6 +90,7 @@ public:
 
 	/** 매 프레임 호출(플레이어 Tick). 조준과 무관한 패시브 효과(자가 회복 등)용. 기본 구현 없음. */
 	virtual void TickJob(float DeltaTime);
+
 
 protected:
 	/** 소유 캐릭터 — 플레이어 또는 동료 AI (InitializeForOwner에서 설정) */

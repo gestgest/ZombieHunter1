@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/JobComponent.h"
 #include "Characters/MyPlayer.h"
@@ -62,8 +62,10 @@ void UJobComponent::PlayAttackSound()
 	}
 }
 
+//원거리 용도
 AProjectile* UJobComponent::SpawnProjectileForward(TSubclassOf<AProjectile> ProjectileClass, float Speed, float MuzzleOffset, float MuzzleHeight)
 {
+	//자기 자신이 없거나 투사체 클래스가 없다면
 	if (!OwnerCharacter || !ProjectileClass)
 	{
 		return nullptr;
@@ -85,6 +87,7 @@ AProjectile* UJobComponent::SpawnProjectileForward(TSubclassOf<AProjectile> Proj
 	SpawnParams.Instigator = OwnerCharacter; // ACharacter는 APawn이라 Instigator로 사용 가능
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
+	//spawn
 	AProjectile* Projectile = World->SpawnActor<AProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams);
 	if (Projectile)
 	{
