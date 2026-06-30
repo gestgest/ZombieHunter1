@@ -18,7 +18,7 @@ class USkeletalMesh;
  * 소유자는 ACharacter이면 무엇이든 가능 — 플레이어(AMyPlayer)와 동료(ACompanion)가 같은 직업을 공유한다.
  * 직업마다 서브클래스(USwordsmanJob, UArcherJob...)에서 Attack()/OnAttackNotify()를 재정의한다.
  *
- * - Attack()        : 자동공격 타이밍에 플레이어가 호출. 기본 동작은 AttackMontage 재생.
+ * - Attack()        : 자동공격 타이밍에 플레이어가 호출. 기본 동작은 소유 캐릭터의 직업별 공격 몽타주 재생.
  * - OnAttackNotify(): 공격 몽타주의 Notify 시점에 플레이어가 호출. 실제 피해/발사 판정을 여기서.
  */
 UCLASS(Abstract, Blueprintable, ClassGroup = (Job), meta = (BlueprintSpawnableComponent))
@@ -49,9 +49,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
 	float EngageRange = 500.0f;
 
-	// 공격 시 재생할 몽타주
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
-	UAnimMontage* AttackMontage = nullptr;
+	// 공격 몽타주는 직업이 아니라 "소유 캐릭터"가 소유한다(스켈레톤별 리타게팅 필요).
+	// → ACombatCharacter::JobAttackMontages[JobName]. Attack()이 거기서 골라 재생한다.
 
 	// 공격 적중 시 재생할 사운드
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")
@@ -80,7 +79,7 @@ public:
 	/** 소유 캐릭터(플레이어/동료)를 연결한다. 소유자가 컴포넌트 생성 직후 호출. */
 	void InitializeForOwner(ACharacter* Owner);
 
-	/** 공격 시도. 기본 구현은 AttackMontage를 재생한다. */
+	/** 공격 시도. 기본 구현은 소유 캐릭터의 JobName별 공격 몽타주(JobAttackMontages)를 재생한다. */
 	UFUNCTION(BlueprintCallable, Category = "Job")
 	virtual void Attack();
 

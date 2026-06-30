@@ -47,10 +47,7 @@ void ACompanion::BeginPlay()
 		{
 			CurrentJob->RegisterComponent();
 			CurrentJob->InitializeForOwner(this); // 소유자 = 이 동료(ACharacter)
-			if (!CurrentJob->AttackMontage)
-			{
-				CurrentJob->AttackMontage = AttackMontage; // 직업에 몽타주 없으면 동료 값으로 보충
-			}
+			// 공격 몽타주는 이 동료(JobAttackMontages[JobName])가 자기 스켈레톤에 맞게 소유한다.
 		}
 	}
 

@@ -51,6 +51,19 @@ void ACombatCharacter::SetDead(bool bNewDead)
 	}
 }
 
+UAnimMontage* ACombatCharacter::GetAttackMontageForJob(FName JobName) const
+{
+	// 이 캐릭터의 스켈레톤에 맞는 직업별 몽타주가 있으면 그걸, 없으면 단일 AttackMontage로 폴백.
+	if (UAnimMontage* const* Found = JobAttackMontages.Find(JobName))
+	{
+		if (*Found)
+		{
+			return *Found;
+		}
+	}
+	return AttackMontage;
+}
+
 void ACombatCharacter::OnMontageNotifyBegin(FName NotifyName, const FBranchingPointNotifyPayload& Payload)
 {
 	HandleAttackNotify(NotifyName);

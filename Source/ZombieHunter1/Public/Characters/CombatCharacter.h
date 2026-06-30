@@ -41,9 +41,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Stats")
 	bool IsDead = false;
 
-	/** 공격 몽타주. 재생 중 Notify가 HandleAttackNotify()를 호출한다(직업 없을 때 폴백용으로도 쓰임). */
+	/** 공격 몽타주. 재생 중 Notify가 HandleAttackNotify()를 호출한다(직업 없는 적 + 맵에 없을 때 폴백용). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	UAnimMontage* AttackMontage = nullptr;
+
+	/** 직업별 공격 몽타주 — 이 캐릭터의 "스켈레톤에 맞게" 리타게팅된 몽타주를 직업 이름으로 매핑한다.
+	 *  애니는 스켈레톤에 묶이므로 직업(공유 컴포넌트)이 아니라 캐릭터가 소유해야 한다.
+	 *  키 = 직업의 JobName(예: "Archer"/"Swordsman"/"Mage"/"Healer"). 비우거나 키가 없으면 AttackMontage로 폴백. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	TMap<FName, UAnimMontage*> JobAttackMontages;
+
+	/** JobName에 해당하는 이 캐릭터의 공격 몽타주를 반환. 맵에 없으면 단일 AttackMontage로 폴백(없으면 null). */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	UAnimMontage* GetAttackMontageForJob(FName JobName) const;
 
 	/** true면 이 전투 캐릭터의 상태/공격 디버그를 화면에 그린다. 플레이어/동료/적 공용 토글. 기본 꺼짐. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Debug")

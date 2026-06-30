@@ -215,12 +215,7 @@ void AMyPlayer::SetJob()
         CurrentJob->RegisterComponent();
         CurrentJob->InitializeForOwner(this);
 
-        // 기존 BP_MyPlayer에 설정해 둔 값을 직업이 비어 있으면 승계 (검사 동작 보존).
-        // → 직업 BP/C++에 별도 값을 넣으면 그쪽이 우선.
-        if (!CurrentJob->AttackMontage)
-        {
-            CurrentJob->AttackMontage = AttackMontage;
-        }
+        // 공격 몽타주는 캐릭터(JobAttackMontages[JobName])가 소유 — 직업으로 승계하지 않는다.
         if (!CurrentJob->AttackSound)
         {
             CurrentJob->AttackSound = AttackSound;

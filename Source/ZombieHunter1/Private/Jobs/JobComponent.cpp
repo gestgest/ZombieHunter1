@@ -2,6 +2,7 @@
 
 #include "Jobs/JobComponent.h"
 #include "Characters/MyPlayer.h"
+#include "Characters/CombatCharacter.h"
 #include "Projectiles/Projectile.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -31,10 +32,14 @@ void UJobComponent::EquipWeapon()
 
 void UJobComponent::Attack()
 {
-	// 기본 동작: 공격 몽타주 재생. 몽타주의 Notify가 OnAttackNotify()를 부른다.
-	if (OwnerCharacter && AttackMontage)
+	// 애니(몽타주)는 캐릭터가 자기 스켈레톤에 맞게 소유한다. 직업은 자기 JobName으로 골라 재생만 시킨다.
+	// 몽타주의 Notify는 캐릭터 베이스(ACombatCharacter)가 받아 OnAttackNotify()로 되돌려준다.
+	if (ACombatCharacter* CC = Cast<ACombatCharacter>(OwnerCharacter))
 	{
-		OwnerCharacter->PlayAnimMontage(AttackMontage);
+		if (UAnimMontage* Montage = CC->GetAttackMontageForJob(JobName))
+		{
+			CC->PlayAnimMontage(Montage);
+		}
 	}
 }
 
