@@ -624,6 +624,12 @@ void AMyPlayer::SetHP(int32 new_hp)
     if (CanvasWidget)
     {
         CanvasWidget->SetProgressUISize(FVector2D(HP * 100, 50));
+
+        // 재시작 버튼을 현재 죽음 상태와 동기화.
+        // OnDeath/OnRevive는 "전환 시점"에만 1회 호출이라, BP BeginPlay(위젯 연결)가
+        // ReStart()보다 먼저 돌면서 HP=0으로 버튼이 켜진 경우 아무도 안 꺼주는 빈틈이 있다.
+        // 여기서 매번 맞춰주면 호출 순서와 무관하게 버튼 상태가 항상 올바르다.
+        CanvasWidget->SetVisRestartButton(IsDead);
     }
 
     // BP 이벤트에 현재 죽음 상태 통보(사망 연출 등)
@@ -639,6 +645,10 @@ bool AMyPlayer::checkDead()
 // 살아있음 → 죽음 전환 시 베이스(SetDead)가 1회 호출.
 void AMyPlayer::OnDeath()
 {
+    // [디버그] 시작 직후 버튼이 켜지는 원인 추적 — 원인 잡히면 삭제할 것
+    UE_LOG(LogTemp, Warning, TEXT("[RestartButton] OnDeath() 발동! HP=%d @ %.2fs"),
+        HP, GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
+
     // 진행 중인 공격 몽타주를 즉시 끊어 슬롯을 비움 → ABP의 죽음 상태가 바로 재생됨
     StopAnimMontage();
 
@@ -677,7 +687,7 @@ void AMyPlayer::OnRevive()
 //...?
 void AMyPlayer::ReStart()
 {
-    SetHP(5);
+    SetHP(MaxHP);
     SetMoney(0);
     //리스폰
     if (playerStart)
@@ -731,6 +741,9 @@ void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
 
         // 위젯이 막 연결된 시점에 현재 HP 기준으로 사망 UI/HP바를 동기화한다.
         // BeginPlay 때는 CanvasWidget이 아직 null이라 버튼을 못 껐을 수 있으므로 여기서 확정.
+        // [디버그] 이 시점의 HP 확인 — 원인 잡히면 삭제할 것
+        UE_LOG(LogTemp, Warning, TEXT("[RestartButton] SetCanvasWidget 호출됨, HP=%d @ %.2fs"),
+            HP, GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
         CanvasWidget->SetVisRestartButton(HP <= 0);
         CanvasWidget->SetProgressUISize(FVector2D(HP * 100, 50));
     }
