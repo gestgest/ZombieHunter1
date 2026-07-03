@@ -66,8 +66,9 @@ void AEnemy::TrackingPlayer()
 {
 	AMyPlayer* myPlayer = Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
 
-	//isDead라면 추격하면 안됨
-	if (myPlayer->checkDead() || IsDead)
+	// 플레이어가 없거나(레벨 전환 등) 죽었거나, 내가 죽었으면 추격 안 함.
+	// IsDead를 조회만 한다 — 예전 checkDead()는 입력모드 재설정 같은 부작용이 있어 여기서 부르면 안 됐다.
+	if (!myPlayer || myPlayer->IsDead || IsDead)
 	{
 		return;
 	}

@@ -41,7 +41,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Stats")
 	bool IsDead = false;
 
-	/** 무장 상태 — idle/walk 블렌드스페이스(무장/비무장) 선택에 쓰인다. 애님 BP가 CombatCharacter로 캐스트해 읽는다.
+	/** 무장 상태 — idle/walk 블렌드스페이스(무장/비무장) 선택에 쓰인다.
+	 *  UCombatAnimInstance가 매 프레임 이 값을 bArmed 변수로 미러링해 AnimBP에 공급한다.
 	 *  플레이어/동료 공용. 동료는 항상 무장(기본 true). 무기 넣/뺌 연출을 넣고 싶으면 이 값을 토글하면 된다.
 	 *  (BP에선 앞의 b가 빠진 "Armed"로 표시됨) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")

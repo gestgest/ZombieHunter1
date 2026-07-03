@@ -106,7 +106,7 @@ void AMyPlayer::BeginPlay()
 
 
     //SetMoney(0);
-    ReStart(); // 주의: 엔진 내장 APawn::Restart()가 아니라 우리 부활 함수(대문자 S). SetHP(5)로 시작 시 사망 UI를 끈다.
+    ReStart(); // 주의: 엔진 내장 APawn::Restart()가 아니라 우리 부활 함수(대문자 S). HP/돈 초기화 + 스타트 지점 이동.
     Damage = 1;
 
     // 직업(Job) 컴포넌트 생성 — 시작 시 1개 고정.
@@ -238,7 +238,7 @@ void AMyPlayer::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
 
     // 죽으면 이동/조준/공격 입력 처리를 멈춤 (죽은 뒤 공격 몽타주가 또 재생되는 것 방지)
-    if (HP <= 0)
+    if (IsDead)
     {
         return;
     }
@@ -615,59 +615,63 @@ bool AMyPlayer::TrySpendMoney(int32 Amount)
     return true;
 }
 
-void AMyPlayer::AddHP(int add_hp)
+void AMyPlayer::SetHP(int32 new_hp)
 {
-    SetHP(this->HP + add_hp);
-}
+    // HP 대입 + IsDead 전환 + OnDeath/OnRevive 호출은 베이스가 담당.
+    Super::SetHP(new_hp);
 
-void AMyPlayer::SetHP(int new_hp)
-{
-    this->HP = new_hp;
-
-    FVector2D size(new_hp * 100, 50);
+    // HUD 체력바 갱신
     if (CanvasWidget)
     {
-        CanvasWidget->SetProgressUISize(size);
+        CanvasWidget->SetProgressUISize(FVector2D(HP * 100, 50));
     }
-    CheckDeath(checkDead());
+
+    // BP 이벤트에 현재 죽음 상태 통보(사망 연출 등)
+    CheckDeath(IsDead);
 }
 
 bool AMyPlayer::checkDead()
 {
-    bool isDead = this->HP <= 0;
-    if (isDead)
+    // 조회 전용 — 예전처럼 이동/입력 모드를 건드리지 않는다(그건 OnDeath/OnRevive가 전환 시 1회씩).
+    return IsDead;
+}
+
+// 살아있음 → 죽음 전환 시 베이스(SetDead)가 1회 호출.
+void AMyPlayer::OnDeath()
+{
+    // 진행 중인 공격 몽타주를 즉시 끊어 슬롯을 비움 → ABP의 죽음 상태가 바로 재생됨
+    StopAnimMontage();
+
+    GetCharacterMovement()->DisableMovement();
+
+    if (CanvasWidget) { CanvasWidget->SetVisRestartButton(true); } //버튼 on
+
+    // 죽으면 UI(재시작 버튼)만 조작 가능
+    if (controller)
     {
-        // 진행 중인 공격 몽타주를 즉시 끊어 슬롯을 비움 → ABP의 죽음 상태가 바로 재생됨
-        StopAnimMontage();
-
-        GetCharacterMovement()->DisableMovement();
-        if (CanvasWidget) { CanvasWidget->SetVisRestartButton(true); } //버튼 on
-
-        if (controller)
-        {
-            controller->bShowMouseCursor = true;
-            controller->SetInputMode(FInputModeUIOnly());
-        }
+        controller->bShowMouseCursor = true;
+        controller->SetInputMode(FInputModeUIOnly());
     }
-    else
+}
+
+// 죽음 → 부활(ReStart의 SetHP) 전환 시 베이스가 1회 호출. 죽을 때 껐던 것을 되돌린다.
+void AMyPlayer::OnRevive()
+{
+    GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+
+    if (CanvasWidget) { CanvasWidget->SetVisRestartButton(false); } //버튼 off
+
+    if (controller)
     {
-        GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-        if (CanvasWidget) { CanvasWidget->SetVisRestartButton(false); } //버튼 off
+        // 마우스 커서를 보이게 하고, 게임+UI 입력 모드로 둠
+        // → 데스크탑에서 마우스로 조이스틱을 조작할 수 있고 커서도 보임
+        controller->bShowMouseCursor = true;
 
-        if (controller)
-        {
-            // 마우스 커서를 보이게 하고, 게임+UI 입력 모드로 둠
-            // → 데스크탑에서 마우스로 조이스틱을 조작할 수 있고 커서도 보임
-            controller->bShowMouseCursor = true;
-
-            FInputModeGameAndUI InputMode;
-            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-            InputMode.SetHideCursorDuringCapture(false);
-            controller->SetInputMode(InputMode);
-        }
-
+        FInputModeGameAndUI InputMode;
+        InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+        InputMode.SetHideCursorDuringCapture(false);
+        controller->SetInputMode(InputMode);
     }
-    return isDead;
 }
 
 //...?

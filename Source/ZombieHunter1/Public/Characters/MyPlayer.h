@@ -36,6 +36,12 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// 살아있음 → 죽음 전환 시 베이스(SetDead)가 1회 호출. 이동/입력을 끄고 사망 UI를 켠다.
+	virtual void OnDeath() override;
+
+	// 죽음 → 부활(ReStart의 SetHP) 전환 시 베이스가 1회 호출. 죽을 때 껐던 것을 되돌린다.
+	virtual void OnRevive() override;
+
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -62,10 +68,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void AddMoney();
 
-	virtual void AddHP(int32 add_hp) override;
+	// AddHP는 베이스 구현을 그대로 쓴다(내부에서 가상 SetHP를 호출 → 아래 override로 들어옴).
 
+	/** HP 설정 + HUD 체력바 갱신. 죽음/부활 "전환" 처리는 베이스가 OnDeath/OnRevive로 호출해준다. */
 	virtual void SetHP(int32 new_hp) override;
 
+	/** 죽었는지 조회만 한다(부작용 없음). 실제 죽음/부활 처리는 OnDeath/OnRevive에서. */
 	UFUNCTION(BlueprintCallable)
 	bool checkDead();
 
@@ -95,6 +103,9 @@ public:
 	/** 모바일 터치 가상 조이스틱(오른쪽: 조준+공격)이 매 프레임 호출 */
 	UFUNCTION(BlueprintCallable, Category = "TopDown|Input")
 	void SetAimInput(FVector2D Value);
+
+	/** 하체 yaw 오프셋(도). AnimInstance(UCombatAnimInstance)가 매 프레임 읽는다. */
+	FORCEINLINE float GetLegYawOffset() const { return LegYawOffset; }
 
 	/** Returns TopDownBoom subobject */
 	FORCEINLINE USpringArmComponent* GetTopDownBoom() const { return TopDownBoom; }
