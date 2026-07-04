@@ -291,6 +291,11 @@ AStaticMeshActor* AInfiniteMapGenerator::SpawnMeshActor(UStaticMesh* Mesh, const
 		return nullptr;
 	}
 
+#if WITH_EDITOR
+	// 아웃라이너 정리용 폴더 (에디터/PIE 전용 — 패키징 빌드에선 컴파일 제외)
+	Actor->SetFolderPath(TEXT("Spawned/Map"));
+#endif
+
 	if (UStaticMeshComponent* Comp = Actor->GetStaticMeshComponent())
 	{
 		// 런타임에 변형/메시 설정을 하려면 Movable 이어야 함 (기본은 Static)

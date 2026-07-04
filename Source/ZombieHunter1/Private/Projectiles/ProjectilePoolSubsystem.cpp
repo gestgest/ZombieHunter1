@@ -44,6 +44,13 @@ AProjectile* UProjectilePoolSubsystem::Acquire(TSubclassOf<AProjectile> Projecti
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 		Projectile = GetWorld()->SpawnActor<AProjectile>(ProjectileClass, Location, Rotation, Params);
+
+#if WITH_EDITOR
+		if (Projectile)
+		{
+			Projectile->SetFolderPath(TEXT("Spawned/Projectiles")); // 아웃라이너 정리용 (에디터 전용)
+		}
+#endif
 	}
 
 	if (Projectile)

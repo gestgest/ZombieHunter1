@@ -67,6 +67,9 @@ void AZombieSlayerGameMode::initEnemy(int index)
 
     if (newEnemy)
     {
+#if WITH_EDITOR
+        newEnemy->SetFolderPath(TEXT("Spawned/Enemies")); // 아웃라이너 정리용 (에디터 전용)
+#endif
         enemyPool.Add(newEnemy);  // 풀에 추가
         newEnemy->EnterPoolDormancy();  // 숨김 + 콜리전/이동/틱 정지 (숨김만으론 중력에 낙하)
     }
@@ -93,6 +96,9 @@ void AZombieSlayerGameMode::initCoin(int index)
 
     if (newCoin)
     {
+#if WITH_EDITOR
+        newCoin->SetFolderPath(TEXT("Spawned/Coins")); // 아웃라이너 정리용 (에디터 전용)
+#endif
         coinPool.Add(newCoin);
         newCoin->SetActorHiddenInGame(true);  // 비활성화
     }
