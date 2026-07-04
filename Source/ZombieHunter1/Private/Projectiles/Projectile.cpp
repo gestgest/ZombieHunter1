@@ -1,5 +1,7 @@
 ﻿#include "Projectiles/Projectile.h"
+#include "Projectiles/ProjectilePoolSubsystem.h"
 #include "Characters/Enemy.h"
+#include "TimerManager.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -31,8 +33,7 @@ AProjectile::AProjectile()
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->ProjectileGravityScale = 0.0f; // 탑다운: 중력 영향 없음
 
-	// 5초 뒤 자동 소멸 (빗나간 화살 정리)
-	InitialLifeSpan = 5.0f;
+	// 수명 처리는 InitialLifeSpan(Destroy 기반) 대신 LifeSeconds 타이머 → 풀 반환으로 한다.
 }
 
 void AProjectile::BeginPlay()
@@ -40,10 +41,76 @@ void AProjectile::BeginPlay()
 	Super::BeginPlay();
 
 	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AProjectile::OnSphereOverlap);
+}
+
+void AProjectile::ActivateFromPool()
+{
+	bInFlight = true;
+
+	// 이전 사용자의 설정이 남지 않게 튜닝 값을 클래스(BP) 기본값으로 리셋.
+	// 궁수/마법사가 같은 발사체 클래스를 공유해도 폭발 반경 등이 새어 들어가지 않는다.
+	// (직업이 매 발사마다 Damage/속도/디버그를, 마법사가 ExplosionRadius를 다시 설정한다)
+	if (const AProjectile* CDO = GetClass()->GetDefaultObject<AProjectile>())
+	{
+		Damage = CDO->Damage;
+		KnockbackForce = CDO->KnockbackForce;
+		ExplosionRadius = CDO->ExplosionRadius;
+		HitSound = CDO->HitSound;
+		bDrawDebug = CDO->bDrawDebug;
+	}
+
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	SetActorTickEnabled(true);
+
+	// 재사용 시 이동 컴포넌트를 다시 가동. (정지 시 UpdatedComponent가 풀릴 수 있어 재바인딩)
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->SetUpdatedComponent(RootComponent);
+		ProjectileMovement->Activate(true);
+	}
 
 	// 디버그 사거리 라인 기준점 기록 (발사 지점/방향)
 	SpawnLocation = GetActorLocation();
 	SpawnForward = GetActorForwardVector();
+
+	// 빗나간 화살은 LifeSeconds 뒤 풀로 반환
+	GetWorldTimerManager().SetTimer(LifeTimerHandle, this, &AProjectile::OnLifeExpired, LifeSeconds);
+}
+
+void AProjectile::DeactivateForPool()
+{
+	bInFlight = false;
+
+	GetWorldTimerManager().ClearTimer(LifeTimerHandle);
+
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+	SetActorTickEnabled(false);
+
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->StopMovementImmediately();
+		ProjectileMovement->Deactivate();
+	}
+}
+
+void AProjectile::ReturnToPool()
+{
+	if (UProjectilePoolSubsystem* Pool = GetWorld() ? GetWorld()->GetSubsystem<UProjectilePoolSubsystem>() : nullptr)
+	{
+		DeactivateForPool();
+		Pool->Release(this);
+	}
+	else
+	{
+		Destroy(); // 풀이 없는 예외 상황(월드 종료 중 등) 폴백
+	}
+}
+
+void AProjectile::OnLifeExpired()
+{
+	ReturnToPool();
 }
 
 void AProjectile::Tick(float DeltaSeconds)
@@ -93,6 +160,11 @@ void AProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* O
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
+	if (!bInFlight)
+	{
+		return; // 이미 풀로 반환됐는데 같은 프레임에 도착한 잔여 오버랩 이벤트 무시
+	}
+
 	AEnemy* HitEnemy = Cast<AEnemy>(OtherActor);
 	if (!HitEnemy)
 	{
@@ -139,7 +211,7 @@ void AProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* O
 		UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());
 	}
 
-	Destroy();
+	ReturnToPool();
 }
 
 void AProjectile::ApplyHit(AEnemy* Enemy)

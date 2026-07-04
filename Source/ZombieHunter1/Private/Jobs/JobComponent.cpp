@@ -4,6 +4,7 @@
 #include "Characters/MyPlayer.h"
 #include "Characters/CombatCharacter.h"
 #include "Projectiles/Projectile.h"
+#include "Projectiles/ProjectilePoolSubsystem.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -87,13 +88,12 @@ AProjectile* UJobComponent::SpawnProjectileForward(TSubclassOf<AProjectile> Proj
 		OwnerCharacter->GetActorLocation() + Forward * MuzzleOffset + FVector(0, 0, MuzzleHeight);
 	const FRotator SpawnRotation = Forward.Rotation();
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = OwnerCharacter;
-	SpawnParams.Instigator = OwnerCharacter; // ACharacter는 APawn이라 Instigator로 사용 가능
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	//spawn
-	AProjectile* Projectile = World->SpawnActor<AProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams);
+	// 풀에서 획득(재사용 또는 최초 1회만 스폰) — Destroy 대신 풀로 반환되는 수명 구조.
+	AProjectile* Projectile = nullptr;
+	if (UProjectilePoolSubsystem* Pool = World->GetSubsystem<UProjectilePoolSubsystem>())
+	{
+		Projectile = Pool->Acquire(ProjectileClass, SpawnLocation, SpawnRotation, OwnerCharacter, OwnerCharacter);
+	}
 	if (Projectile)
 	{
 		Projectile->Damage = Damage; // 직업의 데미지를 발사체에 전달

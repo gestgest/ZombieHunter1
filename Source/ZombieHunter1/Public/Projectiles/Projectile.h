@@ -47,9 +47,31 @@ public:
 	/** 발사 속도(cm/s)를 설정한다. 직업이 스폰 직후 호출. */
 	void SetInitialSpeed(float Speed);
 
+	/** 발사 후 이 시간(초)이 지나면 풀로 반환된다 (빗나간 화살 정리). 구 InitialLifeSpan 대체. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
+	float LifeSeconds = 5.0f;
+
+	/** 풀에서 꺼내질 때(첫 스폰 포함) 풀 서브시스템이 호출 — 충돌/이동/수명 타이머를 켠다. */
+	void ActivateFromPool();
+
+	/** 적중·수명만료 시 자신을 비활성화하고 풀로 반환한다. 풀이 없으면 Destroy로 폴백. */
+	void ReturnToPool();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+
+	/** 풀에서 쉬는 동안 보이지 않게 + 충돌/이동/틱 정지. */
+	void DeactivateForPool();
+
+	/** LifeSeconds 경과 콜백 */
+	void OnLifeExpired();
+
+	/** 수명 타이머 핸들 */
+	FTimerHandle LifeTimerHandle;
+
+	/** 비행 중인지 — 풀 반환 후 같은 프레임에 남은 오버랩 이벤트가 중복 타격하는 것을 막는다. */
+	bool bInFlight = false;
 
 	/** 충돌 구체 (루트) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
