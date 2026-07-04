@@ -64,6 +64,14 @@ void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 //추격하는 함수
 void AEnemy::TrackingPlayer()
 {
+	// 갱신 간격 제한 — BP가 매 프레임 호출해도 여기서 걸러진다.
+	// 경로 재요청은 프레임 단위로 할 필요가 없고, 매 프레임 하면 적 수만큼 길찾기 비용이 쌓인다.
+	const float Now = GetWorld()->GetTimeSeconds();
+	if (Now < NextTrackTime)
+	{
+		return;
+	}
+
 	AMyPlayer* myPlayer = Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
 
 	// 플레이어가 없거나(레벨 전환 등) 죽었거나, 내가 죽었으면 추격 안 함.
@@ -72,6 +80,11 @@ void AEnemy::TrackingPlayer()
 	{
 		return;
 	}
+
+	// 거리 LOD: 멀리 있는 적일수록 갱신을 드물게. ±10% 지터로 여러 적이 같은 프레임에 몰리지 않게 분산.
+	const float Dist = FVector::Dist2D(GetActorLocation(), myPlayer->GetActorLocation());
+	const float Interval = (Dist > TrackFarDistance) ? TrackFarInterval : TrackNearInterval;
+	NextTrackTime = Now + Interval * FMath::FRandRange(0.9f, 1.1f);
 
 	if (aiController)
 	{

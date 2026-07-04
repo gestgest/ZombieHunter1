@@ -54,6 +54,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
 	float CorpseLifeSpan = 3.0f;
 
+	/** AI 의사결정(적 스캔·이동 명령) 갱신 간격(초). 매 프레임 전체 적 스캔을 막는다.
+	 *  조준/공격 타이밍은 매 프레임 유지되므로 반응성엔 영향 없음. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion|AI")
+	float DecisionInterval = 0.2f;
+
 	// 디버그 토글은 베이스(ACombatCharacter::bDebugCombat)로 올림 — 플레이어/적과 공용.
 
 	/** 런타임 생성된 직업 컴포넌트 */
@@ -73,9 +78,19 @@ protected:
 
 	float TimeSinceAttack = 0.0f;
 
+	/** 의사결정 누적 시간. BeginPlay에서 랜덤 오프셋으로 초기화해 동료들끼리 같은 프레임에 몰리지 않게 분산. */
+	float TimeSinceDecision = 0.0f;
+
+	/** 캐시된 교전 대상 — DecisionInterval마다 FindNearestEnemy로 갱신. */
+	UPROPERTY()
+	AEnemy* CurrentTarget = nullptr;
+
 	/** 동료 상태 — 따라다님 / 교전 */
 	enum class EState : uint8 { Following, Fighting };
 	EState State = EState::Following;
+
+	/** DecisionInterval마다 호출 — 타겟 재탐색 + 이동 명령(추격/정지/리더 추종). */
+	void UpdateDecision();
 
 	/** DetectRadius 안에서 가장 가까운 "살아있는" 적을 찾는다(없으면 nullptr). */
 	AEnemy* FindNearestEnemy() const;

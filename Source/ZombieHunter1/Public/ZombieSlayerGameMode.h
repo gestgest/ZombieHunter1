@@ -72,14 +72,24 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Leash")
 	float LeashCheckInterval = 1.0f;
 
-	/** 재배치 시 플레이어 주변 NavMesh에서 위치를 찾는 반경(cm) — SpawnEnemy와 동일 방식 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Leash")
-	float LeashRespawnRadius = 500.0f;
-
 	FTimerHandle LeashTimerHandle;
 
-	/** 너무 멀어졌거나 낙하한 적을 플레이어 근처 NavMesh 위로 재배치 (LeashCheckInterval마다 호출) */
+	/** 너무 멀어졌거나 낙하한 적을 시야 밖 스폰 링으로 재배치 (LeashCheckInterval마다 호출) */
 	void RecycleFarEnemies();
+
+	//////////////////////////////////////////////////////////////////////////
+	// 스폰 링 — 적/코인을 플레이어 눈앞이 아니라 "시야 밖"에 생성해 탐험하다 발견하게 한다.
+
+	/** 스폰 최소 거리(cm). 탑다운 카메라 시야보다 커야 눈앞 팝인이 안 보인다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
+	float SpawnMinDistance = 2200.0f;
+
+	/** 스폰 최대 거리(cm). 리쉬(LeashDistance)와 청크 언로드 경계(~6000)보다 안쪽이어야 한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
+	float SpawnMaxDistance = 3500.0f;
+
+	/** 플레이어 주변 링(Min~Max 거리) 안의 NavMesh 위 랜덤 지점을 찾는다. 실패 시 false. */
+	bool FindReachablePointInRing(const FVector& Center, FNavLocation& OutLocation) const;
 
 	UFUNCTION(BlueprintCallable)
 	void SpawnEnemy();

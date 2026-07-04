@@ -34,6 +34,9 @@ class ZOMBIEHUNTER1_API AEnemy : public ACombatCharacter
 	int enemy_id;
 	bool CanAttack;
 
+	/** 다음 추격 갱신이 허용되는 월드 시간(초). TrackingPlayer가 이 시간 전 호출되면 무시. */
+	float NextTrackTime = 0.0f;
+
 public:
 	// Sets default values for this character's properties
 	AEnemy();
@@ -62,6 +65,21 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	USoundBase* AttackSound; //MS
+
+	//////////////////////////////////////////////////////////////////////////
+	// 추격 갱신 간격 (AI 틱 최적화 — 매 프레임 경로 재요청 금지)
+
+	/** 추격 갱신 간격 — 플레이어가 가까울 때(초) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float TrackNearInterval = 0.25f;
+
+	/** 추격 갱신 간격 — TrackFarDistance보다 멀 때(초). 멀리 있는 적은 드물게 갱신(거리 LOD) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float TrackFarInterval = 0.8f;
+
+	/** 이 거리(cm)보다 멀면 TrackFarInterval을 사용 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float TrackFarDistance = 2000.0f;
 
 
 	//함수

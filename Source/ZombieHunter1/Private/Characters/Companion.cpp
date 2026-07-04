@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Characters/Companion.h"
 #include "Jobs/JobComponent.h"
@@ -52,6 +52,9 @@ void ACompanion::BeginPlay()
 	}
 
 	// 공격 몽타주 Notify 배선은 베이스(ACombatCharacter)가 처리한다(→ HandleAttackNotify).
+
+	// 의사결정 시점을 랜덤 오프셋으로 분산 — 동료 여럿이 같은 프레임에 몰려 스캔하는 스파이크 방지.
+	TimeSinceDecision = FMath::FRandRange(0.0f, DecisionInterval);
 }
 
 void ACompanion::Tick(float DeltaTime)
@@ -64,47 +67,23 @@ void ACompanion::Tick(float DeltaTime)
 	}
 
 	TimeSinceAttack += DeltaTime;
+	TimeSinceDecision += DeltaTime;
 
-	AEnemy* Target = FindNearestEnemy();
-
-	// 진단: 직업 유무 + 가장 가까운 적까지 거리. 화면 좌상단에 매 프레임 갱신.
-	//  job=NULL → DefaultJobClass 미설정 / target=NONE → 탐지반경(DetectRadius) 안에 적 없음.
-	if (bDebugCombat && GEngine)
+	// 무거운 의사결정(전체 적 스캔 + 이동 명령)은 DecisionInterval마다만 실행.
+	if (TimeSinceDecision >= DecisionInterval)
 	{
-		const FString Msg = FString::Printf(TEXT("[Companion] job=%s  target=%s"),
-			CurrentJob ? *CurrentJob->JobName.ToString() : TEXT("NULL"),
-			Target ? *FString::Printf(TEXT("dist %.0f (engage %.0f)"),
-				FVector::Dist(GetActorLocation(), Target->GetActorLocation()),
-				(CurrentJob && CurrentJob->EngageRange > 0.0f) ? CurrentJob->EngageRange : AttackRange) : TEXT("NONE"));
-		GEngine->AddOnScreenDebugMessage((int32)GetUniqueID(), 0.0f, FColor::Cyan, Msg);
+		TimeSinceDecision = 0.0f;
+		UpdateDecision();
 	}
 
-	if (Target)
+	// 반응성이 필요한 것만 매 프레임: 사거리 안 대상 조준 + 공격 타이밍.
+	if (IsValid(CurrentTarget) && !CurrentTarget->IsDead)
 	{
-		// === 교전 ===
-		State = EState::Fighting;
-
-		// 멈춰서 공격하는 거리 = 직업의 교전 사거리(근접=짧게, 원거리=길게). 직업 없으면 동료 AttackRange로 폴백.
-		// 이게 직업의 실제 사거리와 따로 놀면, 사거리 밖에서 멈춰 영영 공격을 안 하는 버그가 생긴다.
 		const float Engage = (CurrentJob && CurrentJob->EngageRange > 0.0f) ? CurrentJob->EngageRange : AttackRange;
-
-		const float Dist = FVector::Dist(GetActorLocation(), Target->GetActorLocation());
-		if (Dist > Engage)
+		const float Dist = FVector::Dist(GetActorLocation(), CurrentTarget->GetActorLocation());
+		if (Dist <= Engage)
 		{
-			// 사거리 밖 → 적에게 접근 (조금 더 가깝게 멈추도록 수용 반경을 줄임)
-			if (AICon)
-			{
-				AICon->MoveToActor(Target, Engage * 0.8f);
-			}
-		}
-		else
-		{
-			// 사거리 안 → 멈추고 적을 바라보며 일정 간격으로 공격
-			if (AICon)
-			{
-				AICon->StopMovement();
-			}
-			FaceActor(Target);
+			FaceActor(CurrentTarget);
 
 			const float Interval = (CurrentJob && CurrentJob->AttackInterval > 0.0f)
 				? CurrentJob->AttackInterval : AttackInterval;
@@ -116,13 +95,56 @@ void ACompanion::Tick(float DeltaTime)
 				if (bDebugCombat) // 공격을 실제로 호출하는 순간 표시(노란 선 + 메시지)
 				{
 					DrawDebugLine(GetWorld(), GetActorLocation(),
-						Target->GetActorLocation(), FColor::Yellow, false, 0.4f, 0, 3.0f);
+						CurrentTarget->GetActorLocation(), FColor::Yellow, false, 0.4f, 0, 3.0f);
 					if (GEngine)
 					{
 						GEngine->AddOnScreenDebugMessage(-1, 0.4f, FColor::Yellow,
 							TEXT("[Companion] Attack() 호출!"));
 					}
 				}
+			}
+		}
+	}
+}
+
+// 느린 업데이트 함수 : DecisionInterval마다 호출 — 타겟 재탐색과 이동 명령만 여기서. (매 프레임 돌릴 필요 없는 것들)
+void ACompanion::UpdateDecision()
+{
+	CurrentTarget = FindNearestEnemy();
+
+	// 진단: 직업 유무 + 가장 가까운 적까지 거리. (지속시간을 갱신 주기에 맞춰 깜빡임 방지)
+	//  job=NULL → DefaultJobClass 미설정 / target=NONE → 탐지반경(DetectRadius) 안에 적 없음.
+	if (bDebugCombat && GEngine)
+	{
+		const FString Msg = FString::Printf(TEXT("[Companion] job=%s  target=%s"),
+			CurrentJob ? *CurrentJob->JobName.ToString() : TEXT("NULL"),
+			CurrentTarget ? *FString::Printf(TEXT("dist %.0f (engage %.0f)"),
+				FVector::Dist(GetActorLocation(), CurrentTarget->GetActorLocation()),
+				(CurrentJob && CurrentJob->EngageRange > 0.0f) ? CurrentJob->EngageRange : AttackRange) : TEXT("NONE"));
+		GEngine->AddOnScreenDebugMessage((int32)GetUniqueID(), DecisionInterval + 0.05f, FColor::Cyan, Msg);
+	}
+
+	if (CurrentTarget)
+	{
+		// === 교전 ===
+		State = EState::Fighting;
+
+		// 멈춰서 공격하는 거리 = 직업의 교전 사거리(근접=짧게, 원거리=길게). 직업 없으면 동료 AttackRange로 폴백.
+		// 이게 직업의 실제 사거리와 따로 놀면, 사거리 밖에서 멈춰 영영 공격을 안 하는 버그가 생긴다.
+		const float Engage = (CurrentJob && CurrentJob->EngageRange > 0.0f) ? CurrentJob->EngageRange : AttackRange;
+
+		const float Dist = FVector::Dist(GetActorLocation(), CurrentTarget->GetActorLocation());
+		if (AICon)
+		{
+			if (Dist > Engage)
+			{
+				// 사거리 밖 → 적에게 접근 (조금 더 가깝게 멈추도록 수용 반경을 줄임)
+				AICon->MoveToActor(CurrentTarget, Engage * 0.8f);
+			}
+			else
+			{
+				// 사거리 안 → 멈추고 공격 (조준/공격 타이밍은 Tick이 매 프레임 처리)
+				AICon->StopMovement();
 			}
 		}
 	}

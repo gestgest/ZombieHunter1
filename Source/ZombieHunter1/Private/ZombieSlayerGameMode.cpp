@@ -138,19 +138,17 @@ void AZombieSlayerGameMode::SpawnEnemy()
         enemy->SetAIController();
     }
 
-    UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
- 
-    float radius = 500;
-
-
     AMyPlayer* myPlayer =
         Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+    if (!myPlayer)
+    {
+        return;
+    }
 
-    FVector playerLocation = myPlayer->GetActorLocation();
     FNavLocation resultLocation;
 
-    // 플레이어 주변 Radius 내 랜덤 도달가능 위치 찾기
-    bool bSuccess = NavSys->GetRandomReachablePointInRadius(playerLocation, radius, resultLocation);
+    // 시야 밖 스폰 링(Min~Max)에서 위치 찾기 — 눈앞 팝인 대신 탐험하다 발견하는 느낌
+    bool bSuccess = FindReachablePointInRing(myPlayer->GetActorLocation(), resultLocation);
 
     FVector upVector(0, 0, 90.0f);
 
@@ -179,12 +177,6 @@ void AZombieSlayerGameMode::RecycleFarEnemies()
         return;
     }
 
-    UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-    if (!NavSys)
-    {
-        return;
-    }
-
     const FVector playerLocation = myPlayer->GetActorLocation();
     const FVector upVector(0, 0, 90.0f);
 
@@ -204,13 +196,41 @@ void AZombieSlayerGameMode::RecycleFarEnemies()
             continue;
         }
 
-        // 플레이어 주변 도달 가능한 위치로 재배치. 실패하면 이번 주기는 넘기고 다음에 재시도.
+        // 시야 밖 스폰 링으로 재배치 — 눈앞 순간이동이 보이지 않게. 실패하면 다음 주기에 재시도.
         FNavLocation resultLocation;
-        if (NavSys->GetRandomReachablePointInRadius(playerLocation, LeashRespawnRadius, resultLocation))
+        if (FindReachablePointInRing(playerLocation, resultLocation))
         {
             enemy->TeleportForLeash(resultLocation.Location + upVector);
         }
     }
+}
+
+// 플레이어 기준 SpawnMinDistance~SpawnMaxDistance 링 안에서 NavMesh 위 지점을 찾는다.
+// 장애물 위나 NavMesh 빈 곳에 찍힐 수 있어 여러 번 시도한다.
+bool AZombieSlayerGameMode::FindReachablePointInRing(const FVector& Center, FNavLocation& OutLocation) const
+{
+    UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+    if (!NavSys)
+    {
+        return false;
+    }
+
+    for (int32 Attempt = 0; Attempt < 10; ++Attempt)
+    {
+        const float Angle = FMath::FRandRange(0.0f, 2.0f * PI);
+        const float Dist = FMath::FRandRange(SpawnMinDistance, SpawnMaxDistance);
+        const FVector Candidate = Center + FVector(FMath::Cos(Angle) * Dist, FMath::Sin(Angle) * Dist, 0.0f);
+
+        if (NavSys->ProjectPointToNavigation(Candidate, OutLocation, FVector(400.0f, 400.0f, 1000.0f)))
+        {
+            // 투영 과정에서 링 안쪽(=시야 안)으로 크게 끌려왔으면 무효 — 팝인 방지
+            if (FVector::Dist2D(OutLocation.Location, Center) >= SpawnMinDistance * 0.8f)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 
@@ -237,22 +257,21 @@ void AZombieSlayerGameMode::spawnCoin()
     }
 
     ACoin* coin = coinPool[i];
-    UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-
-    float radius = 500;
-
 
     AMyPlayer* myPlayer =
         Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+    if (!myPlayer)
+    {
+        return;
+    }
 
-    FVector playerLocation = myPlayer->GetActorLocation();
     FNavLocation resultLocation;
 
-    // 플레이어 주변 Radius 내 랜덤 도달가능 위치 찾기
-    bool bSuccess = NavSys->GetRandomReachablePointInRadius(playerLocation, radius, resultLocation);
+    // 코인도 시야 밖 링에 생성 — 돌아다니다 "발견"하는 보상
+    bool bSuccess = FindReachablePointInRing(myPlayer->GetActorLocation(), resultLocation);
 
     FVector upVector(0, 0, 90.0f);
-    
+
     if (bSuccess)
     {
         coin->SetActorLocation(resultLocation.Location + upVector);
