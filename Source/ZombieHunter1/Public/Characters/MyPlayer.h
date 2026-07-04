@@ -310,6 +310,11 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = "Companion", meta = (AllowPrivateAccess = "true"))
 	TArray<ACompanion*> Companions;
 
+	/** true면 C 키(게임패드 Y)로 동료를 섭외하는 디버그 바인딩을 켠다.
+	 *  실제 발동 조건이 생기면 끄고 BP에서 RecruitCompanion 호출로 교체. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion|Debug", meta = (AllowPrivateAccess = "true"))
+	bool bDebugRecruitKey = true;
+
 	//////////////////////////////////////////////////////////////////////////
 	// 터치 조이스틱 (C++가 자동 생성해서 화면에 띄움 — 위젯 BP 불필요)
 
