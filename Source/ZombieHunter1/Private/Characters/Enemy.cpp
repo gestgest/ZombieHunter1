@@ -260,6 +260,62 @@ void AEnemy::OnRevive()
 	}
 }
 
+// 풀 대기: 숨김만으로는 부족하다 — 숨겨진 액터도 중력/틱이 돌아서
+// 원점 청크가 언로드되면 풀 전체가 낙하하고, 대기 적들이 매 프레임 연산 낭비를 만든다.
+void AEnemy::EnterPoolDormancy()
+{
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+	SetActorTickEnabled(false);
+
+	if (aiController)
+	{
+		aiController->StopMovement();
+		aiController->ClearFocus(EAIFocusPriority::Gameplay);
+	}
+
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->StopMovementImmediately();
+		Move->DisableMovement(); // MOVE_None — 중력도 멈춘다
+	}
+}
+
+void AEnemy::WakeFromPool()
+{
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	SetActorTickEnabled(true);
+
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(MOVE_Walking);
+	}
+	// 캡슐 콜리전 복구는 OnRevive(SetHP로 부활 전환 시)가 담당한다.
+}
+
+void AEnemy::TeleportForLeash(const FVector& NewLocation)
+{
+	// 언로드된 지형을 가로지르던 옛 경로 폐기 (다음 TrackingPlayer가 새 위치에서 다시 잡는다)
+	if (aiController)
+	{
+		aiController->StopMovement();
+	}
+
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	if (Move)
+	{
+		Move->StopMovementImmediately(); // 낙하 중이었다면 수직 속도 제거 (착지 순간 바닥 뚫기 방지)
+	}
+
+	SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+	if (Move)
+	{
+		Move->SetMovementMode(MOVE_Walking); // 낙하(MOVE_Falling) 상태였어도 즉시 보행 복귀
+	}
+}
+
 void AEnemy::SetAIController()
 {
 	// 이미 AI 컨트롤러에 빙의돼 있으면 그대로 재사용

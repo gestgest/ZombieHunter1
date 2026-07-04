@@ -18,6 +18,15 @@ void AZombieSlayerGameMode::StartPlay()
         5.0f,                        // 간격 (5초)
         true                         // 반복 여부 (true = 반복)
     );
+
+    // 리쉬 검사: 뒤처져 지형을 잃(을 뻔하)는 적을 주기적으로 회수
+    GetWorldTimerManager().SetTimer(
+        LeashTimerHandle,
+        this,
+        &AZombieSlayerGameMode::RecycleFarEnemies,
+        LeashCheckInterval,
+        true
+    );
 }
 
 void AZombieSlayerGameMode::init()
@@ -59,7 +68,7 @@ void AZombieSlayerGameMode::initEnemy(int index)
     if (newEnemy)
     {
         enemyPool.Add(newEnemy);  // 풀에 추가
-        newEnemy->SetActorHiddenInGame(true);  // 비활성화
+        newEnemy->EnterPoolDormancy();  // 숨김 + 콜리전/이동/틱 정지 (숨김만으론 중력에 낙하)
     }
 }
 
@@ -142,8 +151,8 @@ void AZombieSlayerGameMode::SpawnEnemy()
     if (bSuccess)
     {
         enemy->SetActorLocation(resultLocation.Location + upVector);
-        enemy->SetActorHiddenInGame(false);
-        enemy->SetHP(5);
+        enemy->WakeFromPool();  // 숨김 해제 + 콜리전/이동/틱 복구
+        enemy->SetHP(5);        // 죽었던 적이면 부활 전환(OnRevive)까지 발동
     }
     else
     {
@@ -151,6 +160,51 @@ void AZombieSlayerGameMode::SpawnEnemy()
     }
 
     enemy_size++;
+}
+
+// 무한맵 리쉬: 플레이어에서 너무 멀어졌거나(청크 언로드로 지형 상실 직전) 이미 낙하한 적을
+// 플레이어 근처 NavMesh 위로 재배치한다. 적이 사라지는 대신 진행 방향에서 다시 나타나 압박 유지.
+void AZombieSlayerGameMode::RecycleFarEnemies()
+{
+    AMyPlayer* myPlayer =
+        Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+    if (!myPlayer)
+    {
+        return;
+    }
+
+    UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+    if (!NavSys)
+    {
+        return;
+    }
+
+    const FVector playerLocation = myPlayer->GetActorLocation();
+    const FVector upVector(0, 0, 90.0f);
+
+    for (AEnemy* enemy : enemyPool)
+    {
+        // 풀 대기 중이거나 죽어서 사망 연출 중인 적은 건드리지 않는다
+        if (!IsValid(enemy) || enemy->IsHidden() || enemy->IsDead)
+        {
+            continue;
+        }
+
+        const FVector enemyLocation = enemy->GetActorLocation();
+        const bool bTooFar  = FVector::Dist2D(enemyLocation, playerLocation) > LeashDistance;
+        const bool bFalling = enemyLocation.Z < FallZThreshold;
+        if (!bTooFar && !bFalling)
+        {
+            continue;
+        }
+
+        // 플레이어 주변 도달 가능한 위치로 재배치. 실패하면 이번 주기는 넘기고 다음에 재시도.
+        FNavLocation resultLocation;
+        if (NavSys->GetRandomReachablePointInRadius(playerLocation, LeashRespawnRadius, resultLocation))
+        {
+            enemy->TeleportForLeash(resultLocation.Location + upVector);
+        }
+    }
 }
 
 
@@ -214,7 +268,7 @@ void AZombieSlayerGameMode::DieEnemy(int index)
     enemy_size--;
     if (enemyPool.IsValidIndex(index) && IsValid(enemyPool[index]))
     {
-        enemyPool[index]->SetActorHiddenInGame(true);  // 비활성화(풀로 반납)
+        enemyPool[index]->EnterPoolDormancy();  // 풀로 반납 (숨김 + 콜리전/이동/틱 정지)
     }
 }
 

@@ -77,6 +77,18 @@ public:
 
 	void SetID(int id);
 
+	/** 풀 대기 상태로 전환 — 숨김 + 콜리전/이동/틱 정지. 게임모드 풀이 반납 시 호출.
+	 *  SetActorHiddenInGame만으로는 중력이 계속 작동해서, 발밑 청크가 언로드되면
+	 *  대기 중인 적이 통째로 낙하한다 → 반드시 이동까지 꺼야 한다. */
+	void EnterPoolDormancy();
+
+	/** 풀에서 깨어남 — EnterPoolDormancy가 껐던 것들을 복구. 게임모드가 위치 배치 후 호출. */
+	void WakeFromPool();
+
+	/** 리쉬 회수용 순간이동 — 낙하 속도/진행 중 경로를 정리하고 새 위치로 옮긴다.
+	 *  (무한맵에서 뒤처져 지형을 잃은 적을 플레이어 근처로 재배치할 때 사용) */
+	void TeleportForLeash(const FVector& NewLocation);
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "Enemy")
 	void DeadEnemySignal(int index);
 
