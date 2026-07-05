@@ -12,6 +12,9 @@
 #include "GameFramework/CharacterMovementComponent.h" //죽을 때 이동 정지
 #include "Components/CapsuleComponent.h"             //죽을 때 충돌 해제
 
+#include "Components/WidgetComponent.h" //머리 위 HP 바
+#include "UI/EnemyHPBarWidget.h"
+
 
 // Sets default values
 AEnemy::AEnemy()
@@ -21,6 +24,15 @@ AEnemy::AEnemy()
 	// 기본 AI 컨트롤러 클래스 지정 — SpawnDefaultController()가 항상 생성할 대상을 갖도록.
 	// (BP에서 None으로 비워두면 SpawnDefaultController가 아무것도 안 만들어 크래시 위험)
 	AIControllerClass = AAIController::StaticClass();
+
+	// 머리 위 HP 바 — 스크린 스페이스라 탑다운 카메라에서도 항상 화면을 향하고 크기가 일정하다.
+	// 표시할 위젯 클래스(WBP_EnemyHPBar)는 BP_Enemy에서 지정.
+	HPBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HPBar"));
+	HPBarComponent->SetupAttachment(RootComponent);
+	HPBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f)); // 캡슐(반높이 ~88) 위
+	HPBarComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	HPBarComponent->SetDrawSize(FVector2D(100.0f, 12.0f));
+	HPBarComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Called when the game starts or when spawned
@@ -218,6 +230,23 @@ bool AEnemy::hit()
 void AEnemy::DebugHPShow()
 {
 	UE_LOG(LogTemp, Log, TEXT("bobo : %d"), HP);
+}
+
+// HP 대입 + 죽음/부활 전환은 베이스가 담당. 여기서는 머리 위 HP 바만 갱신한다.
+void AEnemy::SetHP(int32 new_hp)
+{
+	Super::SetHP(new_hp);
+
+	if (HPBarComponent)
+	{
+		if (UEnemyHPBarWidget* Bar = Cast<UEnemyHPBarWidget>(HPBarComponent->GetWidget()))
+		{
+			Bar->SetHPPercent(MaxHP > 0 ? (float)HP / (float)MaxHP : 0.0f);
+		}
+
+		// 죽으면 시체 위에 바가 남지 않게 숨긴다. 풀 재사용(SetHP(5) → 부활) 시 다시 보인다.
+		HPBarComponent->SetVisibility(!IsDead);
+	}
 }
 
 void AEnemy::SetID(int id)
