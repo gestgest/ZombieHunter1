@@ -602,6 +602,11 @@ void AMyPlayer::SetMoney(int value)
     {
         CanvasWidget->UpdateCoinText(this->Money);
     }
+    else
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red,
+            FString::Printf(TEXT("CanvasWidget is null")));
+    }
 }
 
 bool AMyPlayer::TrySpendMoney(int32 Amount)
