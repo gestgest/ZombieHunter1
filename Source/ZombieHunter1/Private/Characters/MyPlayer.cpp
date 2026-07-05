@@ -643,6 +643,26 @@ int32 AMyPlayer::GetExpToNextLevel() const
     return ExpBase + (Level - 1) * ExpGrowth;
 }
 
+void AMyPlayer::UpgradeWeapon()
+{
+    WeaponLevel++;
+
+    // 데미지는 직업 컴포넌트가 소유한다(검사 근접/궁수·마법사 발사체 모두 CurrentJob->Damage 사용).
+    if (CurrentJob)
+    {
+        CurrentJob->Damage += WeaponDamagePerLevel;
+    }
+
+    OnWeaponUpgraded(WeaponLevel); // BP: 이펙트/사운드/무기 외형 교체
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 2.5f, FColor::Yellow,
+            FString::Printf(TEXT("[Weapon] +%d강! (Damage %d)"),
+                WeaponLevel, CurrentJob ? CurrentJob->Damage : -1));
+    }
+}
+
 void AMyPlayer::UpdateExpUI()
 {
     if (CanvasWidget)
@@ -730,6 +750,13 @@ void AMyPlayer::ReStart()
     Level = 1;
     Exp = 0;
     UpdateExpUI();
+
+    // 무기 강화도 초기화 — 강화로 올린 만큼만 되돌린다(직업 기본 Damage는 보존). 유지하고 싶으면 삭제.
+    if (CurrentJob && WeaponLevel > 0)
+    {
+        CurrentJob->Damage -= WeaponLevel * WeaponDamagePerLevel;
+    }
+    WeaponLevel = 0;
     //리스폰
     if (playerStart)
     {

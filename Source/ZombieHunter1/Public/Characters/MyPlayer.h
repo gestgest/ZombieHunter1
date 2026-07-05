@@ -95,6 +95,14 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Player|Stats")
 	void OnLevelUp(int32 NewLevel);
 
+	/** 무기 강화(강화 발판 AWeaponUpgradeZone이 호출) — WeaponLevel 증가 + 현재 직업의 Damage 상승. */
+	UFUNCTION(BlueprintCallable, Category = "Player|Weapon")
+	void UpgradeWeapon();
+
+	/** 무기 강화 직후 1회 호출 — BP에서 이펙트/사운드/무기 외형 교체 등을 구현. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Player|Weapon")
+	void OnWeaponUpgraded(int32 NewWeaponLevel);
+
 	/** 무기 컴포넌트의 스켈레탈 메시를 교체한다. NewMesh가 null이면 무기를 숨긴다. 직업이 호출. */
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void SetWeaponMesh(USkeletalMesh* NewMesh);
@@ -247,6 +255,18 @@ private:
 	/** 레벨당 필요 경험치 증가량 (필요량 = ExpBase + (Level-1) × ExpGrowth) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats", meta = (AllowPrivateAccess = "true"))
 	int32 ExpGrowth = 5;
+
+	//////////////////////////////////////////////////////////////////////////
+	// 무기 강화 — 강화 발판(AWeaponUpgradeZone)에 돈을 넣으면 UpgradeWeapon()이 호출된다.
+	// 데미지는 직업 컴포넌트(CurrentJob->Damage) 소유라 강화도 거기에 얹는다.
+
+	/** 현재 무기 강화 레벨(+1 = 1강). 표시용. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Weapon", meta = (AllowPrivateAccess = "true"))
+	int32 WeaponLevel = 0;
+
+	/** 강화 1회당 직업 Damage 증가량 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Weapon", meta = (AllowPrivateAccess = "true"))
+	int32 WeaponDamagePerLevel = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio", meta = (AllowPrivateAccess = "true"))
 	USoundBase* AttackSound; //MS
