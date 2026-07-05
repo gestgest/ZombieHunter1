@@ -83,6 +83,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Player|Stats")
 	bool TrySpendMoney(int32 Amount);
 
+	/** 경험치 획득(적 처치 시 AEnemy::OnDeath가 호출). 레벨업 처리와 HUD 갱신까지 담당. */
+	UFUNCTION(BlueprintCallable, Category = "Player|Stats")
+	void AddExp(int32 Amount);
+
+	/** 현재 레벨에서 다음 레벨까지 필요한 경험치 총량 (= ExpBase + (Level-1) × ExpGrowth) */
+	UFUNCTION(BlueprintCallable, Category = "Player|Stats")
+	int32 GetExpToNextLevel() const;
+
+	/** 레벨업 순간 1회 호출 — BP에서 이펙트/사운드/스탯 상승 등을 구현. 여러 레벨을 한 번에 오르면 레벨마다 호출. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Player|Stats")
+	void OnLevelUp(int32 NewLevel);
+
 	/** 무기 컴포넌트의 스켈레탈 메시를 교체한다. NewMesh가 null이면 무기를 숨긴다. 직업이 호출. */
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void SetWeaponMesh(USkeletalMesh* NewMesh);
@@ -157,6 +169,9 @@ private:
 	void SetJob();
 	void SetMoney(int Money);
 
+	/** 경험치 HUD(텍스트/바) 갱신. AddExp와 SetCanvasWidget(초기 표시)에서 호출. */
+	void UpdateExpUI();
+
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Private state (순수 내부 상태 — BP/에디터 노출 없음)
@@ -213,6 +228,25 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats", meta = (AllowPrivateAccess = "true"))
 	int32 Money;
 	// HP / Damage 는 베이스(ACombatCharacter)로 이동.
+
+	//////////////////////////////////////////////////////////////////////////
+	// 경험치/레벨 — 적을 잡으면 AEnemy::OnDeath가 AddExp를 호출해 쌓인다.
+
+	/** 현재 레벨 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats", meta = (AllowPrivateAccess = "true"))
+	int32 Level = 1;
+
+	/** 현재 레벨에서 쌓은 경험치(레벨업 시 필요량을 빼고 이월) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats", meta = (AllowPrivateAccess = "true"))
+	int32 Exp = 0;
+
+	/** 1레벨 → 2레벨에 필요한 경험치 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats", meta = (AllowPrivateAccess = "true"))
+	int32 ExpBase = 10;
+
+	/** 레벨당 필요 경험치 증가량 (필요량 = ExpBase + (Level-1) × ExpGrowth) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats", meta = (AllowPrivateAccess = "true"))
+	int32 ExpGrowth = 5;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio", meta = (AllowPrivateAccess = "true"))
 	USoundBase* AttackSound; //MS

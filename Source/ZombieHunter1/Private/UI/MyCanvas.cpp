@@ -74,6 +74,20 @@ void UMyCanvas::UpdateCoinText(int32 Money)
     }
 }
 
+void UMyCanvas::UpdateExp(int32 Level, int32 Exp, int32 ExpToNext)
+{
+    // 위젯은 옵셔널(BindWidgetOptional) — BP_Canvas에 아직 안 배치했으면 조용히 넘어간다.
+    if (ExpText)
+    {
+        ExpText->SetText(FText::FromString(
+            FString::Printf(TEXT("Lv.%d  %d / %d"), Level, Exp, ExpToNext)));
+    }
+    if (ExpBar)
+    {
+        ExpBar->SetPercent(ExpToNext > 0 ? (float)Exp / (float)ExpToNext : 0.0f);
+    }
+}
+
 void UMyCanvas::SetProgressUISize(FVector2D size)
 {
     if (hp_bar)

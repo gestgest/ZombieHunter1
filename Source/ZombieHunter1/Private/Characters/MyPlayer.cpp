@@ -618,6 +618,39 @@ bool AMyPlayer::TrySpendMoney(int32 Amount)
     return true;
 }
 
+void AMyPlayer::AddExp(int32 Amount)
+{
+    if (Amount <= 0)
+    {
+        return;
+    }
+
+    Exp += Amount;
+
+    // 한 번에 여러 레벨을 오를 수도 있다(큰 보상). 필요량을 빼고 남는 경험치는 이월.
+    while (Exp >= GetExpToNextLevel())
+    {
+        Exp -= GetExpToNextLevel();
+        Level++;
+        OnLevelUp(Level); // BP: 이펙트/사운드/스탯 상승
+    }
+
+    UpdateExpUI();
+}
+
+int32 AMyPlayer::GetExpToNextLevel() const
+{
+    return ExpBase + (Level - 1) * ExpGrowth;
+}
+
+void AMyPlayer::UpdateExpUI()
+{
+    if (CanvasWidget)
+    {
+        CanvasWidget->UpdateExp(Level, Exp, GetExpToNextLevel());
+    }
+}
+
 void AMyPlayer::SetHP(int32 new_hp)
 {
     // HP 대입 + IsDead 전환 + OnDeath/OnRevive 호출은 베이스가 담당.
@@ -692,6 +725,11 @@ void AMyPlayer::ReStart()
 {
     SetHP(MaxHP);
     SetMoney(0);
+
+    // 경험치/레벨도 초기화 (돈과 동일한 재시작 규칙). 죽어도 유지하고 싶으면 이 두 줄만 지우면 된다.
+    Level = 1;
+    Exp = 0;
+    UpdateExpUI();
     //리스폰
     if (playerStart)
     {
@@ -749,5 +787,6 @@ void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
             HP, GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
         CanvasWidget->SetVisRestartButton(HP <= 0);
         CanvasWidget->SetProgressUISize(FVector2D(HP * 100, 50));
+        UpdateExpUI(); // 위젯 연결 시점에 경험치 표시도 현재 값으로 맞춘다
     }
 }

@@ -68,6 +68,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	USoundBase* AttackSound; //MS
 
+	/** 처치 시 플레이어에게 주는 경험치. 강한 적 BP에서 더 크게 설정하면 된다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Stats")
+	int32 ExpReward = 1;
+
 	/** 머리 위 HP 바(스크린 스페이스). 위젯 클래스(WBP_EnemyHPBar)는 BP_Enemy에서 이 컴포넌트에 지정한다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
 	UWidgetComponent* HPBarComponent;

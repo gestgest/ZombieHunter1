@@ -280,6 +280,14 @@ void AEnemy::OnDeath()
 		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 
+	// 처치 보상 — 죽음 "전환" 시점이라 정확히 1회만 지급된다(풀 재사용/중복 타격에도 안전).
+	// 동료가 잡아도 경험치는 플레이어에게 간다.
+	AMyPlayer* myPlayer = Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+	if (myPlayer && !myPlayer->IsDead)
+	{
+		myPlayer->AddExp(ExpReward);
+	}
+
 	DeadEnemySignal(enemy_id); // BP: 사망 애님 재생 / 일정 시간 후 Destroy
 }
 
