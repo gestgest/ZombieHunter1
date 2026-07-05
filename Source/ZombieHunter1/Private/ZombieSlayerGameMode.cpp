@@ -10,7 +10,10 @@ void AZombieSlayerGameMode::StartPlay()
     Super::StartPlay();
     AZombieSlayerGameMode::init();
 
-    // 5초마다 SpawnEnemyTimer 함수 반복 호출
+    // 풀 전체를 5초 기다리지 않고 즉시 링에 배치 (드립피드 대신 배치 스폰)
+    AZombieSlayerGameMode::spawn();
+
+    // 이후로는 5초마다 spawn()을 불러 죽어서 빈 슬롯만 다시 채운다
     GetWorldTimerManager().SetTimer(
         SpawnTimerHandle,           // 타이머 핸들
         this,                        // 호출할 객체
@@ -109,35 +112,10 @@ void AZombieSlayerGameMode::spawn()
     spawnCoin();
 }
 
+// 풀에서 대기 중(숨김) 상태인 적을 전부 한 번에 깨워 시야 밖 링에 배치한다.
+// 게임 시작 직후엔 풀 전체(MAX_ENEMY_SIZE)가 한꺼번에 깨어나고, 이후엔 죽어서 빈 슬롯만 채워진다.
 void AZombieSlayerGameMode::SpawnEnemy()
 {
-    int i = 0;
-
-    for (; i < enemyPool.Num(); i++)
-    {
-        // 파괴됐거나 무효한 풀 엔트리는 건너뛴다 (댕글링 포인터 역참조 = 크래시 방지).
-        if (!IsValid(enemyPool[i]))
-        {
-            continue;
-        }
-        if (enemyPool[i]->IsHidden())
-        {
-            break;
-        }
-    }
-    //Max (또는 쓸 수 있는 적이 없음)
-    if (i >= enemyPool.Num())
-    {
-        return;
-    }
-
-    AEnemy *enemy = enemyPool[i];
-
-    if (!enemy->GetController())
-    {
-        enemy->SetAIController();
-    }
-
     AMyPlayer* myPlayer =
         Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
     if (!myPlayer)
@@ -145,25 +123,38 @@ void AZombieSlayerGameMode::SpawnEnemy()
         return;
     }
 
-    FNavLocation resultLocation;
+    const FVector playerLocation = myPlayer->GetActorLocation();
+    const FVector upVector(0, 0, 90.0f);
 
-    // 시야 밖 스폰 링(Min~Max)에서 위치 찾기 — 눈앞 팝인 대신 탐험하다 발견하는 느낌
-    bool bSuccess = FindReachablePointInRing(myPlayer->GetActorLocation(), resultLocation);
-
-    FVector upVector(0, 0, 90.0f);
-
-    if (bSuccess)
+    //전부 깨운다.
+    for (AEnemy* enemy : enemyPool)
     {
-        enemy->SetActorLocation(resultLocation.Location + upVector);
+        // 파괴됐거나 무효한 풀 엔트리, 이미 활성 상태인 적은 건너뛴다.
+        if (!IsValid(enemy) || !enemy->IsHidden())
+        {
+            continue;
+        }
+
+        FNavLocation resultLocation;
+
+        // 시야 밖 스폰 링(Min~Max)에서 위치 찾기 — 눈앞 팝인 대신 탐험하다 발견하는 느낌
+        if (!FindReachablePointInRing(playerLocation, resultLocation))
+        {
+            continue;  // 이번엔 실패, 다음 spawn() 주기에 재시도
+        }
+
+        if (!enemy->GetController())
+        {
+            enemy->SetAIController();
+        }
+
+        //왜인지 모르지만 정 가운데가 pivot이라 +90을 해야한다.
+        enemy->SetActorLocation(resultLocation.Location + upVector); 
         enemy->WakeFromPool();  // 숨김 해제 + 콜리전/이동/틱 복구
         enemy->SetHP(5);        // 죽었던 적이면 부활 전환(OnRevive)까지 발동
-    }
-    else
-    {
-        return;
-    }
 
-    enemy_size++;
+        enemy_size++;
+    }
 }
 
 // 무한맵 리쉬: 플레이어에서 너무 멀어졌거나(청크 언로드로 지형 상실 직전) 이미 낙하한 적을

@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <vector>
-#define MAX_ENEMY_SIZE 5
+#define MAX_ENEMY_SIZE 20
 #define MAX_COIN_SIZE 10
 
 #include "CoreMinimal.h"
