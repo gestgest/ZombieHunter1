@@ -24,6 +24,9 @@ ACompanion::ACompanion()
 	// 스폰되면 자동으로 AI 컨트롤러가 빙의하도록.
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	// 머리 위 HP 바 — 생성/갱신 로직은 베이스(ACombatCharacter) 소유. 위젯 클래스는 BP_Companion에서 지정.
+	CreateHPBarComponent();
 }
 
 void ACompanion::BeginPlay()

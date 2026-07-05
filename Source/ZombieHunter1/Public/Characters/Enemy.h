@@ -15,8 +15,6 @@ struct FPathFollowingResult;
 //FBranchingPointNotifyPayload
 struct FBranchingPointNotifyPayload;
 
-class UWidgetComponent;
-
 #include "Enemy.generated.h"
 
 
@@ -72,12 +70,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Stats")
 	int32 ExpReward = 1;
 
-	/** 머리 위 HP 바(스크린 스페이스). 위젯 클래스(WBP_EnemyHPBar)는 BP_Enemy에서 이 컴포넌트에 지정한다. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
-	UWidgetComponent* HPBarComponent;
-
-	/** HP 변경 시 머리 위 HP 바를 갱신하고, 죽으면 숨긴다. */
-	virtual void SetHP(int32 new_hp) override;
+	// 머리 위 HP 바(HPBarComponent)와 SetHP의 바 갱신은 베이스(ACombatCharacter)로 이동 — 동료와 공유.
 
 	//////////////////////////////////////////////////////////////////////////
 	// 추격 갱신 간격 (AI 틱 최적화 — 매 프레임 경로 재요청 금지)

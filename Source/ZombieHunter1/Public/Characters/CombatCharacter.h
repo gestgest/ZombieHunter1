@@ -8,6 +8,7 @@
 
 class UAnimMontage;
 struct FBranchingPointNotifyPayload;
+class UWidgetComponent;
 
 /**
  * 전투 캐릭터 공통 베이스 — 플레이어(AMyPlayer)/동료(ACompanion)/적(AEnemy)이 공유한다.
@@ -73,12 +74,25 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void AddHP(int32 add_hp);
 
-	/** HP를 설정하고 죽음/부활 전환을 갱신한다. */
+	/** HP를 설정하고 죽음/부활 전환을 갱신한다. 머리 위 HP 바가 있으면(적/동료) 같이 갱신. */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void SetHP(int32 new_hp);
 
+	/** 머리 위 HP 바(스크린 스페이스). 서브클래스 "생성자"가 CreateHPBarComponent()를 불러야 생긴다.
+	 *  적/동료만 만들고, 플레이어는 안 만든다(HUD 체력바 사용) — null이면 SetHP가 그냥 건너뛴다.
+	 *  표시할 위젯 클래스(WBP_EnemyHPBar)는 각 BP에서 이 컴포넌트에 지정. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	UWidgetComponent* HPBarComponent = nullptr;
+
 protected:
 	virtual void BeginPlay() override;
+
+	/** 머리 위 HP 바 컴포넌트를 생성한다. 반드시 서브클래스 생성자에서만 호출할 것(CreateDefaultSubobject 제약).
+	 *  컴포넌트 이름은 "HPBar" — BP에 저장된 위젯 클래스 지정이 이름으로 매칭되므로 바꾸면 안 된다. */
+	void CreateHPBarComponent();
+
+	/** HP/MaxHP 비율로 바를 채우고, 죽으면 숨긴다. SetHP가 호출. */
+	void UpdateHPBar();
 
 	/** HP 변화에 따라 IsDead를 바꾸고 OnDeath/OnRevive 훅을 전환 시점에 1회씩 호출. */
 	void SetDead(bool bNewDead);

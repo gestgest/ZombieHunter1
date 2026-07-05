@@ -9,8 +9,10 @@
 class UProgressBar;
 
 /**
- * 적 머리 위 HP 바 — AEnemy의 스크린 스페이스 WidgetComponent에 꽂히는 위젯.
+ * 머리 위 HP 바 — ACombatCharacter의 스크린 스페이스 WidgetComponent(HPBar)에 꽂히는 위젯.
+ * 적/동료가 공유한다(같은 WBP를 둘 다 지정해도 되고, 색만 다른 WBP를 따로 만들어도 됨).
  * BP(WBP_EnemyHPBar)는 이 클래스를 부모로 두고 "HPBar"라는 이름의 ProgressBar만 배치하면 된다.
+ * (클래스 이름의 "Enemy"는 처음 적용 대상이 적이었던 흔적 — WBP 부모 참조가 깨지지 않게 유지)
  */
 UCLASS()
 class ZOMBIEHUNTER1_API UEnemyHPBarWidget : public UUserWidget

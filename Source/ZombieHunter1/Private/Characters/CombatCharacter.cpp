@@ -3,6 +3,8 @@
 #include "Characters/CombatCharacter.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Components/WidgetComponent.h" //머리 위 HP 바
+#include "UI/EnemyHPBarWidget.h"
 
 ACombatCharacter::ACombatCharacter()
 {
@@ -33,6 +35,35 @@ void ACombatCharacter::SetHP(int32 new_hp)
 {
 	HP = new_hp;
 	SetDead(HP <= 0);
+	UpdateHPBar(); // 머리 위 바가 있는 캐릭터(적/동료)만 실제로 갱신된다
+}
+
+// 머리 위 HP 바 생성 — 반드시 서브클래스 생성자에서 호출(CreateDefaultSubobject 제약).
+// 스크린 스페이스라 탑다운 카메라에서도 항상 화면을 향하고 크기가 일정하다.
+void ACombatCharacter::CreateHPBarComponent()
+{
+	HPBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HPBar"));
+	HPBarComponent->SetupAttachment(RootComponent);
+	HPBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f)); // 캡슐(반높이 ~88) 위
+	HPBarComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	HPBarComponent->SetDrawSize(FVector2D(100.0f, 12.0f));
+	HPBarComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ACombatCharacter::UpdateHPBar()
+{
+	if (!HPBarComponent)
+	{
+		return; // 플레이어 등 바 없는 캐릭터
+	}
+
+	if (UEnemyHPBarWidget* Bar = Cast<UEnemyHPBarWidget>(HPBarComponent->GetWidget()))
+	{
+		Bar->SetHPPercent(MaxHP > 0 ? (float)HP / (float)MaxHP : 0.0f);
+	}
+
+	// 죽으면 시체 위에 바가 남지 않게 숨긴다. 풀 재사용/부활(SetHP>0) 시 다시 보인다.
+	HPBarComponent->SetVisibility(!IsDead);
 }
 
 void ACombatCharacter::SetDead(bool bNewDead)

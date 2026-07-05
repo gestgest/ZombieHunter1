@@ -2,6 +2,7 @@
 
 #include "Characters/Enemy.h"
 #include "Characters/MyPlayer.h"
+#include "Characters/Companion.h" //동료도 추격 대상
 #include "NavigationSystem.h"  // 내비게이션 사용 시
 #include "Kismet/GameplayStatics.h" //getCharacter, sound
 //#include "Kismet/KismetSystemLibrary.h" //ray
@@ -12,10 +13,6 @@
 #include "GameFramework/CharacterMovementComponent.h" //죽을 때 이동 정지
 #include "Components/CapsuleComponent.h"             //죽을 때 충돌 해제
 
-#include "Components/WidgetComponent.h" //머리 위 HP 바
-#include "UI/EnemyHPBarWidget.h"
-
-
 // Sets default values
 AEnemy::AEnemy()
 {
@@ -25,14 +22,8 @@ AEnemy::AEnemy()
 	// (BP에서 None으로 비워두면 SpawnDefaultController가 아무것도 안 만들어 크래시 위험)
 	AIControllerClass = AAIController::StaticClass();
 
-	// 머리 위 HP 바 — 스크린 스페이스라 탑다운 카메라에서도 항상 화면을 향하고 크기가 일정하다.
-	// 표시할 위젯 클래스(WBP_EnemyHPBar)는 BP_Enemy에서 지정.
-	HPBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HPBar"));
-	HPBarComponent->SetupAttachment(RootComponent);
-	HPBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f)); // 캡슐(반높이 ~88) 위
-	HPBarComponent->SetWidgetSpace(EWidgetSpace::Screen);
-	HPBarComponent->SetDrawSize(FVector2D(100.0f, 12.0f));
-	HPBarComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	// 머리 위 HP 바 — 생성/갱신 로직은 베이스(ACombatCharacter) 소유. 위젯 클래스는 BP_Enemy에서 지정.
+	CreateHPBarComponent();
 }
 
 // Called when the game starts or when spawned
@@ -73,7 +64,8 @@ void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
-//추격하는 함수
+//추격하는 함수 — 플레이어와 동료 중 "가장 가까운 살아있는 아군"을 쫓는다.
+// (이름은 BP 호환을 위해 TrackingPlayer 유지)
 void AEnemy::TrackingPlayer()
 {
 	// 갱신 간격 제한 — BP가 매 프레임 호출해도 여기서 걸러진다.
@@ -86,22 +78,53 @@ void AEnemy::TrackingPlayer()
 
 	AMyPlayer* myPlayer = Cast<AMyPlayer>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
 
-	// 플레이어가 없거나(레벨 전환 등) 죽었거나, 내가 죽었으면 추격 안 함.
+	// 플레이어가 없거나(레벨 전환 등) 내가 죽었으면 추격 안 함.
 	// IsDead를 조회만 한다 — 예전 checkDead()는 입력모드 재설정 같은 부작용이 있어 여기서 부르면 안 됐다.
-	if (!myPlayer || myPlayer->IsDead || IsDead)
+	if (!myPlayer || IsDead)
+	{
+		return;
+	}
+
+	// 타겟 선정: 플레이어 + 살아있는 동료들 중 가장 가까운 대상.
+	// (예전엔 무조건 플레이어만 쫓아서, 동료는 지나가다 스윕에 얻어걸릴 때만 맞았다)
+	const FVector myLocation = GetActorLocation();
+	ACombatCharacter* target = nullptr;
+	float targetDist = FLT_MAX;
+
+	if (!myPlayer->IsDead)
+	{
+		target = myPlayer;
+		targetDist = FVector::Dist2D(myLocation, myPlayer->GetActorLocation());
+	}
+
+	for (ACompanion* companion : myPlayer->GetCompanions())
+	{
+		if (!IsValid(companion) || companion->IsDead)
+		{
+			continue;
+		}
+		const float dist = FVector::Dist2D(myLocation, companion->GetActorLocation());
+		if (dist < targetDist)
+		{
+			target = companion;
+			targetDist = dist;
+		}
+	}
+
+	// 전원 사망 → 쫓을 대상 없음
+	if (!target)
 	{
 		return;
 	}
 
 	// 거리 LOD: 멀리 있는 적일수록 갱신을 드물게. ±10% 지터로 여러 적이 같은 프레임에 몰리지 않게 분산.
-	const float Dist = FVector::Dist2D(GetActorLocation(), myPlayer->GetActorLocation());
-	const float Interval = (Dist > TrackFarDistance) ? TrackFarInterval : TrackNearInterval;
+	const float Interval = (targetDist > TrackFarDistance) ? TrackFarInterval : TrackNearInterval;
 	NextTrackTime = Now + Interval * FMath::FRandRange(0.9f, 1.1f);
 
 	if (aiController)
 	{
-		aiController->SetFocus(myPlayer);
-		aiController->MoveToActor(myPlayer, attackRange);
+		aiController->SetFocus(target);
+		aiController->MoveToActor(target, attackRange);
 	}
 }
 
@@ -230,23 +253,6 @@ bool AEnemy::hit()
 void AEnemy::DebugHPShow()
 {
 	UE_LOG(LogTemp, Log, TEXT("bobo : %d"), HP);
-}
-
-// HP 대입 + 죽음/부활 전환은 베이스가 담당. 여기서는 머리 위 HP 바만 갱신한다.
-void AEnemy::SetHP(int32 new_hp)
-{
-	Super::SetHP(new_hp);
-
-	if (HPBarComponent)
-	{
-		if (UEnemyHPBarWidget* Bar = Cast<UEnemyHPBarWidget>(HPBarComponent->GetWidget()))
-		{
-			Bar->SetHPPercent(MaxHP > 0 ? (float)HP / (float)MaxHP : 0.0f);
-		}
-
-		// 죽으면 시체 위에 바가 남지 않게 숨긴다. 풀 재사용(SetHP(5) → 부활) 시 다시 보인다.
-		HPBarComponent->SetVisibility(!IsDead);
-	}
 }
 
 void AEnemy::SetID(int id)

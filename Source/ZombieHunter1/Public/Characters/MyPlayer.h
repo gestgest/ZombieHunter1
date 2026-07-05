@@ -127,6 +127,9 @@ public:
 	/** 하체 yaw 오프셋(도). AnimInstance(UCombatAnimInstance)가 매 프레임 읽는다. */
 	FORCEINLINE float GetLegYawOffset() const { return LegYawOffset; }
 
+	/** 현재 동료 목록(읽기 전용) — 적 타게팅(AEnemy::TrackingPlayer) 등 외부 조회용. */
+	FORCEINLINE const TArray<ACompanion*>& GetCompanions() const { return Companions; }
+
 	/** Returns TopDownBoom subobject */
 	FORCEINLINE USpringArmComponent* GetTopDownBoom() const { return TopDownBoom; }
 	/** Returns TopDownCamera subobject */
