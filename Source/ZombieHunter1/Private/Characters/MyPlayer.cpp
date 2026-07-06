@@ -26,6 +26,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "Characters/Companion.h" //동료 섭외
 #include "Components/CapsuleComponent.h" //동료 스폰 시 캡슐 반높이
+#include "ZombieGameInstance.h" //직업 선택 씬에서 고른 직업 읽기
 
 // 모바일(안드로이드/iOS) 플랫폼이면 true. 터치 조이스틱 표시 여부 판단용.
 // 컴파일 타임 매크로라 PC 빌드에선 항상 false → 조이스틱 숨김.
@@ -209,6 +210,17 @@ void AMyPlayer::ReplaceWeapon()
 
 void AMyPlayer::SetJob()
 {
+    // 직업 선택 씬에서 고른 직업이 GameInstance에 실려 왔으면 그걸 우선 사용한다.
+    // 선택이 없거나(None) GameInstance 클래스를 아직 지정 안 했으면(캐스트 실패)
+    // 기존 DefaultJobClass 그대로 — 에디터 셋업 전에도 동작이 바뀌지 않는다.
+    if (UZombieGameInstance* GI = Cast<UZombieGameInstance>(GetGameInstance()))
+    {
+        if (GI->SelectedJobClass)
+        {
+            DefaultJobClass = GI->SelectedJobClass;
+        }
+    }
+
     CurrentJob = NewObject<UJobComponent>(this, DefaultJobClass);
     if (CurrentJob)
     {
