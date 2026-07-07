@@ -131,6 +131,18 @@ void AMoneyPadZone::CompleteZone()
 }
 
 
+// 상태 영속: 언로드 때 저장한 값을 재생성된 발판에 주입.
+// 새 액터는 기본값으로 태어나므로, 게이지/비용/소진 여부에 "이전 삶의 기억"을 돌려준다.
+void AMoneyPadZone::RestorePadState(int32 InPaidMoney, int32 InMaxMoney, bool bInConsumed)
+{
+	MaxMoney = FMath::Max(1, InMaxMoney);
+	PaidMoney = FMath::Clamp(InPaidMoney, 0, MaxMoney);
+	bConsumed = bInConsumed;
+
+	Progress = (float)PaidMoney / (float)MaxMoney;
+	OnProgressChanged(Progress); // BP 위젯/게이지 바에도 복원값 반영
+}
+
 //스폰존에 들어간다면
 void AMoneyPadZone::OnTriggerBeginOverlap(UPrimitiveComponent* /*OverlappedComp*/, AActor* OtherActor,
 	UPrimitiveComponent* /*OtherComp*/, int32 /*OtherBodyIndex*/, bool /*bFromSweep*/, const FHitResult& /*Sweep*/)

@@ -114,6 +114,16 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "SpawnZone")
 	void OnInsufficientFunds();
 
+	///////////////////////////////////////////////////////////////////////////////////
+	// 상태 영속 (무한맵 청크 언로드/재생성 시 게이지 보존용)
+	///////////////////////////////////////////////////////////////////////////////////
+
+	/** 일회성 발판이 이미 쓰였는지 — 언로드 시 저장용 읽기 (bConsumed는 protected라 밖에서 못 읽음) */
+	bool IsConsumed() const { return bConsumed; }
+
+	/** 언로드 전에 저장해둔 상태를 재생성된 발판에 주입한다. 게이지 표시(Progress)와 BP 이벤트까지 갱신. */
+	void RestorePadState(int32 InPaidMoney, int32 InMaxMoney, bool bInConsumed);
+
 
 
 protected:

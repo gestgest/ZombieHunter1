@@ -57,6 +57,10 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	/** 레벨을 떠날 때(메뉴 복귀/PIE 종료) 아직 로드 중인 청크는 UnloadChunk를 안 거치므로,
+	 *  그 안의 발판 상태를 여기서 마지막으로 저장한다. */
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	//////////////////////////////////////////////////////////////////////////
 	// [디버그]
 	//////////////////////////////////////////////////////////////////////////
@@ -248,4 +252,15 @@ private:
 
 	AStaticMeshActor* SpawnMeshActor(UStaticMesh* Mesh, const FVector& Location,
 		const FRotator& Rotation, const FVector& Scale, UMaterialInterface* OverrideMat);
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	/// Villege
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	void SetupVillege(bool bIsPOIChunk, FPOIInfo& POI, const FVector Center, FMapChunk& Chunk);
+
+	/** 발판 상태가 기본값과 다르면 GameInstance에 저장 (UnloadChunk와 EndPlay 두 출구에서 호출).
+	 *  기본값 그대로면 저장 스킵 — 시드가 재생성하는 값은 기억할 필요 없다(delta만 저장). */
+	void SavePadStateIfChanged(const FIntPoint& Coord, class AMoneyPadZone* Pad) const;
+
 };
