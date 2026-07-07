@@ -227,6 +227,8 @@ void AInfiniteMapGenerator::UnloadChunk(const FIntPoint& Coord)
 	}
 }
 
+
+//여기서 장애물, 마을, 좀비마을 
 void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 {
 	FMapChunk Chunk;
@@ -242,7 +244,6 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 	FPOIInfo POI;
 	const bool bIsPOIChunk = GetPOIAtChunk(Coord, POI);
 
-	// 바닥: 청크 전체를 덮도록 스케일, 윗면이 Z=0에 오도록 배치
 	// POI 청크는 전용 머티리얼로 구분 (마을=파랑, 좀비마을=어두움)
 	UMaterialInterface* FloorMat = FloorMaterial;
 	if (bIsPOIChunk)
@@ -254,7 +255,7 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 		}
 	}
 
-	if (FloorMesh)
+	if (FloorMesh) //바닥 깔기 : 마을 실질적으로 까는 건 이때쯤
 	{
 		const float Base = FMath::Max(1.f, FloorMeshBaseSize);
 		const float XYScale = ChunkSize / Base;
@@ -262,21 +263,24 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 		const FVector FloorScale(XYScale, XYScale, ZScale);
 		const FVector FloorLoc = Center - FVector(0.f, 0.f, FloorThickness * 0.5f);
 
+		//마을 깔기
 		if (AStaticMeshActor* Floor = SpawnMeshActor(FloorMesh, FloorLoc, FRotator::ZeroRotator, FloorScale, FloorMat))
 		{
 			Chunk.SpawnedActors.Add(Floor);
 		}
 	}
 
-	//건물 생성
-	if (bIsPOIChunk && bDebugDrawPOI)
+	//POI : 마을이나 좀비마을 와이어 박스 만듬
+	if (bIsPOIChunk && bDebugDrawPOI && POI.bIsCenter)
 	{
 		const bool bVillage = (POI.Type == EPOIType::Village);
+		const int32 FootprintSize = GetPOIRadiusInChunks() * 2 + 1; //사이즈 할당
+		const float HalfExtent = ChunkSize * FootprintSize * 0.5f;
 		DrawDebugBox(GetWorld(), Center + FVector(0.f, 0.f, 100.f),
-			FVector(ChunkSize * 0.5f, ChunkSize * 0.5f, 100.f),
+			FVector(HalfExtent, HalfExtent, 100.f),
 			bVillage ? FColor::Green : FColor::Red, false, 120.f, 0, 8.f);
-		UE_LOG(LogTemp, Log, TEXT("[POI] %s generated at chunk (%d, %d)"),
-			bVillage ? TEXT("Village") : TEXT("ZombieVillage"), Coord.X, Coord.Y);
+		UE_LOG(LogTemp, Log, TEXT("[POI] %s generated at chunk (%d, %d), size %dx%d chunks"),
+			bVillage ? TEXT("Village") : TEXT("ZombieVillage"), Coord.X, Coord.Y, FootprintSize, FootprintSize);
 	}
 
 	// 장애물: 청크 안에 랜덤 배치 — POI 청크는 비워둔다 (마을 콘텐츠 자리)
@@ -340,14 +344,34 @@ namespace
 	}
 }
 
-//이 청크안에 poi가 있는지
+//POI 발자국 반경(청크). 한 변이 region 크기보다 압도적으로 큰 경우를 막음
+//= > 혹시모르는 try문이라고 생각하면 됨
+int32 AInfiniteMapGenerator::GetPOIRadiusInChunks() const
+{
+	const int32 RegionSize = FMath::Max(2, RegionSizeInChunks); //음수나 0 나누기 방지용
+	const int32 Radius = (FMath::Max(1, POISizeInChunks) - 1) / 2; // 짝수 크기는 홀수(2R+1)로 내림: 4 → 3×3
+	return FMath::Min(Radius, (RegionSize - 1) / 2); //만약 크기를 무식
+}
+
+//이 청크가 POI 발자국 안에 있는지
 bool AInfiniteMapGenerator::GetPOIAtChunk(const FIntPoint& ChunkCoord, FPOIInfo& OutInfo) const
 {
-	//ChunkToRegion는 
+	// 중심을 리전 안쪽으로 클램프해 발자국이 리전을 못 벗어나므로, 자기 리전만 검사하면 된다
 	const FPOIInfo Info = GetPOIForRegion(ChunkToRegion(ChunkCoord));
-	if (Info.bHasPOI && Info.CenterChunk == ChunkCoord)
+	
+	//POIChance로 안 나올경우
+	if (!Info.bHasPOI)
+	{
+		return false;
+	}
+
+	//아무리 리전이 있다해도 내 시야에 안 보일 경우 => 여기서 판별
+	const int32 Radius = GetPOIRadiusInChunks();
+	if (FMath::Abs(ChunkCoord.X - Info.CenterChunk.X) <= Radius &&
+		FMath::Abs(ChunkCoord.Y - Info.CenterChunk.Y) <= Radius)
 	{
 		OutInfo = Info;
+		OutInfo.bIsCenter = (ChunkCoord == Info.CenterChunk);
 		return true;
 	}
 	return false;
@@ -382,10 +406,19 @@ FPOIInfo AInfiniteMapGenerator::GetPOIForRegion(const FIntPoint& RegionCoord) co
 	Info.bHasPOI = true;
 
 
-	// 리전 내 POI 청크 위치. 시작 리전은 플레이어 시작 청크(0,0)와 최소 2청크 떨어뜨린다
-	const int32 MinCell = bStartRegion ? 2 : 0;
-	const int32 LocalX = Stream.RandRange(MinCell, Size - 1);
-	const int32 LocalY = Stream.RandRange(MinCell, Size - 1);
+	// 리전 내 POI 중심 위치. 발자국(2R+1)²이 리전 밖으로 삐져나가지 않게 중심을 [R, Size-1-R]에서만 뽑는다.
+	// (삐져나가면 옆 리전 청크가 자기 리전만 검사하는 GetPOIAtChunk에서 잘려버림)
+	const int32 Radius = GetPOIRadiusInChunks();
+	const int32 MaxCell = Size - 1 - Radius;
+
+	//리전 위치 뽑는 코드
+	// 시작 리전은 발자국 가장자리(중심-R)가 플레이어 시작 청크(0,0)에서 최소 2청크 떨어지게.
+	// 발자국이 커서 불가능하면 리전에 들어가는 한 최대한 밀어낸다.
+	const int32 MinCell = FMath::Min(bStartRegion ? (Radius + 2) : Radius, MaxCell);
+	const int32 LocalX = Stream.RandRange(MinCell, MaxCell); 
+	const int32 LocalY = Stream.RandRange(MinCell, MaxCell);
+
+
 	Info.CenterChunk = FIntPoint(RegionCoord.X * Size + LocalX, RegionCoord.Y * Size + LocalY);
 
 	Info.Type = (bStartRegion || Stream.FRand() < VillageRatio)

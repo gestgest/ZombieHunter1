@@ -35,6 +35,7 @@ struct FPOIInfo
 	bool bHasPOI = false;
 	FIntPoint CenterChunk = FIntPoint::ZeroValue;	// POI 중심 청크 좌표 (리전 로컬 아님, 전역 청크 좌표)
 	EPOIType Type = EPOIType::Village;
+	bool bIsCenter = false;	// GetPOIAtChunk가 채움: 질의한 청크가 POI 중심 청크인지 (건물/NPC 스폰은 중심에서 한 번만)
 };
 
 /**
@@ -55,6 +56,7 @@ protected:
 
 	//////////////////////////////////////////////////////////////////////////
 	// [디버그]
+	//////////////////////////////////////////////////////////////////////////
 
 	//켜면 청크 생성/갱신을 전부 멈춤. 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Map|Debug")
@@ -62,8 +64,12 @@ protected:
 
 
 
+
+
+
 	//////////////////////////////////////////////////////////////////////////
 	// 기본 설정
+	//////////////////////////////////////////////////////////////////////////
 
 	/** 청크 한 변의 길이(cm) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map")
@@ -87,8 +93,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map")
 	int32 GlobalSeed = 1337;
 
+
+
+
+
 	//////////////////////////////////////////////////////////////////////////
 	// 바닥
+	//////////////////////////////////////////////////////////////////////////
 
 	/** 바닥 타일 메시 (예: LevelPrototyping/Meshes/SM_Cube) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|Floor")
@@ -106,8 +117,16 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|Floor")
 	float FloorThickness = 20.f;
 
+
+
+
+
+
+
 	//////////////////////////////////////////////////////////////////////////
 	// 장애물
+	//////////////////////////////////////////////////////////////////////////
+
 
 	/** 장애물 후보 메시들 (랜덤으로 골라 배치) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|Obstacles")
@@ -133,15 +152,25 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|Obstacles")
 	float ChunkEdgeMargin = 150.f;
 
-	//////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////
 	// POI (마을/좀비마을 — 특수 지역)
-	// 청크를 리전(RegionSizeInChunks²) 단위로 묶고, 리전마다 시드 해시로 최대 1개의 POI 청크를 정한다.
-	// POI 청크는 장애물을 생성하지 않고 전용 바닥을 깐다. (스켈레톤 — 콘텐츠는 후속 단계)
+	////////////////////////////////////////////////////////////////////////////////////////////////
+	// 청크를 리전(RegionSizeInChunks²) 단위로 묶고, 리전마다 시드 해시로 최대 1개의 POI를 정한다.
 
 	//그러니까 8x8청크에 하나의 리전 존재
 	/** 리전 한 변의 청크 수. 리전마다 최대 1개의 POI가 배치된다. (8 × ChunkSize 2000 = 160m마다) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI", meta = (ClampMin = "2"))
 	int32 RegionSizeInChunks = 8;
+
+	/** POI 한 변의 청크 수 (예: 3이면 3×3 청크 = 60×60m). 홀수 권장 — 짝수는 아래 홀수로 내림.
+		*  리전보다 크게 잡으면 리전에 들어가는 최대 크기로 자동 축소된다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI", meta = (ClampMin = "1"))
+	int32 POISizeInChunks = 3;
 
 	/** 리전에 POI가 생길 확률(0~1). 시작 리전(0,0)은 이 값과 무관하게 항상 마을이 보장된다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
@@ -149,7 +178,7 @@ protected:
 
 	/** POI가 마을일 확률(나머지는 좀비마을). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float VillageRatio = 0.6f;
+	float VillageRatio = 0.8f;
 
 	/** 마을 청크의 바닥 머티리얼. 기본값: MI_Solid_Blue (파란 바닥 = 마을) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI")
@@ -162,6 +191,16 @@ protected:
 	/** 켜면 POI 청크 생성 시 경계 박스(마을=초록, 좀비마을=빨강)와 로그를 남긴다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Map|POI|Debug")
 	bool bDebugDrawPOI = true;
+
+
+
+
+
+
+
+
+
+
 
 private:
 	/** 현재 로드된 청크들 (좌표 → 스폰 액터들) */
@@ -193,8 +232,11 @@ private:
 	/** 이 리전의 POI 정보를 시드 해시로 계산한다. 스폰/검사 없음 — 순수 계산이라 항상 같은 답. */
 	FPOIInfo GetPOIForRegion(const FIntPoint& RegionCoord) const;
 
-	/** 이 청크가 POI 중심 청크면 true를 반환하고 OutInfo를 채운다. */
+	/** 이 청크가 POI 발자국(중심 ± 반경) 안이면 true를 반환하고 OutInfo를 채운다. */
 	bool GetPOIAtChunk(const FIntPoint& ChunkCoord, FPOIInfo& OutInfo) const;
+
+	/** POI 발자국 반경(청크 수). 발자국 한 변 = 2R+1. 리전을 벗어나지 않게 제한된 값 */
+	int32 GetPOIRadiusInChunks() const;
 
 	AStaticMeshActor* SpawnMeshActor(UStaticMesh* Mesh, const FVector& Location,
 		const FRotator& Rotation, const FVector& Scale, UMaterialInterface* OverrideMat);
