@@ -11,6 +11,8 @@ class UMaterialInterface;
 class AStaticMeshActor;
 class APawn;
 class ANavMeshBoundsVolume;
+class ACompanion;
+class AVillager;
 
 /** 한 청크가 스폰한 액터 묶음 (언로드 시 한 번에 Destroy) */
 USTRUCT()
@@ -199,6 +201,24 @@ protected:
 	 *  청크 액터 묶음에 들어가므로 언로드 시 함께 제거된다 — 게이지 진행도 영속은 후속 과제(FPOIState). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI")
 	TSubclassOf<AActor> VillagePadClass;
+
+	/** 마을 경비병 클래스 (기본: BP_Companion — 경비 모드로 스폰됨). 비우면 경비병 없음.
+	 *  언로드 시 제거되고 재방문 시 풀피로 재생성된다 (경비병 생사 영속은 후속 과제). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI")
+	TSubclassOf<ACompanion> VillageGuardClass;
+
+	/** 마을 중심 청크에 배치할 경비병 수. 발판 주변 고정 자리에 선다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI", meta = (ClampMin = "0", ClampMax = "4"))
+	int32 VillageGuardCount = 2;
+
+	/** 마을 주민(비전투 NPC) 클래스. BP_Villager(부모: Villager)를 만들어 지정 — 비우면 주민 없음.
+	 *  마을 중심 주변을 배회하며, 언로드 시 제거되고 재방문 시 재생성된다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI")
+	TSubclassOf<AVillager> VillagerClass;
+
+	/** 마을 중심 청크에 배치할 주민 수. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI", meta = (ClampMin = "0", ClampMax = "6"))
+	int32 VillagerCount = 3;
 
 	/** 켜면 POI 청크 생성 시 경계 박스(마을=초록, 좀비마을=빨강)와 로그를 남긴다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Map|POI|Debug")

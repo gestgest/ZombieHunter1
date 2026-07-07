@@ -54,6 +54,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
 	float CorpseLifeSpan = 3.0f;
 
+	//////////////////////////////////////////////////////////////////////////
+	// 경비 모드 (마을 경비병용) — 리더 대신 "자리"를 지킨다
+
+	/** 켜면 리더 추종 대신 HomeLocation을 지킨다. 적과 교전 후 할 일이 없으면 자기 자리로 복귀.
+	 *  (마을 경비병: 생성기가 스폰 직후 켜고 HomeLocation을 지정한다) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion|Guard")
+	bool bGuardHome = false;
+
+	/** 지킬 위치(월드). bGuardHome일 때만 사용. */
+	UPROPERTY(BlueprintReadWrite, Category = "Companion|Guard")
+	FVector HomeLocation = FVector::ZeroVector;
+
+	/** 집에서 이 거리(cm) 안이면 "자리에 있음"으로 보고 정지. 벗어난 채 한가하면 복귀한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion|Guard")
+	float HomeAcceptRadius = 150.0f;
+
 	/** AI 의사결정(적 스캔·이동 명령) 갱신 간격(초). 매 프레임 전체 적 스캔을 막는다.
 	 *  조준/공격 타이밍은 매 프레임 유지되므로 반응성엔 영향 없음. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion|AI")

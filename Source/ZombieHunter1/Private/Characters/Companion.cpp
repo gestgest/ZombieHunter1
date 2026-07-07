@@ -169,6 +169,25 @@ void ACompanion::UpdateDecision()
 			AICon->StopMovement(); // 충분히 가까우면 멈춤(졸졸 따라가다 정지)
 		}
 	}
+	else if (bGuardHome)
+	{
+		// === 경비 (마을 경비병) ===
+		// 리더가 없고 적도 없으면 자기 자리(HomeLocation)로 복귀 — 교전으로 자리를 벗어나도 다시 돌아온다.
+		State = EState::Following;
+
+		const float Dist = FVector::Dist2D(GetActorLocation(), HomeLocation);
+		if (Dist > HomeAcceptRadius)
+		{
+			if (AICon)
+			{
+				AICon->MoveToLocation(HomeLocation, HomeAcceptRadius * 0.5f);
+			}
+		}
+		else if (AICon)
+		{
+			AICon->StopMovement(); // 자리에 도착 — 대기
+		}
+	}
 }
 
 AEnemy* ACompanion::FindNearestEnemy() const

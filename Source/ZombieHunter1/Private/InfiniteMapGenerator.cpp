@@ -12,6 +12,8 @@
 #include "DrawDebugHelpers.h" // POI 청크 디버그 박스
 #include "MoneyPadZone.h" // 마을 발판 상태 저장/복원
 #include "ZombieGameInstance.h" // POI 상태 영속 저장소 (직업 선택도 실어 나르는 프로젝트 공용 GameInstance)
+#include "Characters/Companion.h" // 마을 경비병 (경비 모드로 스폰)
+#include "Characters/Villager.h" // 마을 주민 (비전투 배회 NPC)
 
 
 //초기
@@ -65,6 +67,13 @@ AInfiniteMapGenerator::AInfiniteMapGenerator()
 	if (VillagePadFinder.Succeeded())
 	{
 		VillagePadClass = VillagePadFinder.Class;
+	}
+
+	// 마을 경비병: 동료 BP를 기본 지정 — 스폰 시 경비 모드(bGuardHome)로 전환해서 사용
+	static ConstructorHelpers::FClassFinder<ACompanion> VillageGuardFinder(TEXT("/Game/Characters/Companion/BP_Companion"));
+	if (VillageGuardFinder.Succeeded())
+	{
+		VillageGuardClass = VillageGuardFinder.Class;
 	}
 }
 
@@ -510,6 +519,75 @@ void AInfiniteMapGenerator::SetupVillege(bool bIsPOIChunk, FPOIInfo & POI, const
 							POI.CenterChunk.X, POI.CenterChunk.Y, Saved->PaidMoney, Saved->MaxMoney);
 					}
 				}
+			}
+		}
+
+		// 경비병: 발판 주변 고정 자리에 배치. 랜덤 산포가 아니라 고정 레이아웃 — 재생성돼도 항상 같은 그림.
+		// 리더 없이 스폰하고 경비 모드를 켜서 "자리를 지키다 → 적 오면 교전 → 끝나면 복귀"로 동작.
+		if (VillageGuardClass && VillageGuardCount > 0)
+		{
+			// 발판 대각선 네 모서리 자리 (VillageGuardCount만큼 앞에서부터 사용)
+			static const FVector2D GuardPosts[4] = {
+				FVector2D(450.f, 450.f), FVector2D(-450.f, -450.f),
+				FVector2D(450.f, -450.f), FVector2D(-450.f, 450.f),
+			};
+
+			FActorSpawnParameters GuardParams;
+			GuardParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+			GuardParams.Owner = this;
+
+			const int32 Count = FMath::Min(VillageGuardCount, 4);
+			for (int32 i = 0; i < Count; ++i)
+			{
+				// 캡슐 반높이(~90)만큼 띄워 바닥 위에 스폰
+				const FVector GuardLoc = Center + FVector(GuardPosts[i].X, GuardPosts[i].Y, 92.f);
+				ACompanion* Guard = GetWorld()->SpawnActor<ACompanion>(
+					VillageGuardClass, GuardLoc, FRotator::ZeroRotator, GuardParams);
+				if (!Guard)
+				{
+					continue;
+				}
+
+				Guard->Leader = nullptr;        // 아무도 안 따라간다
+				Guard->bGuardHome = true;       // 대신 자기 자리를 지킨다
+				Guard->HomeLocation = GuardLoc;
+#if WITH_EDITOR
+				Guard->SetFolderPath(TEXT("Spawned/Map"));
+#endif
+				Chunk.SpawnedActors.Add(Guard); // 청크와 함께 언로드/재생성
+			}
+		}
+
+		// 주민(비전투): 발판과 겹치지 않는 고정 자리에서 시작해 마을 중심 주변을 배회.
+		// 스폰 위치는 고정이지만 이후엔 각자 알아서 돌아다녀서 마을이 살아 보인다.
+		if (VillagerClass && VillagerCount > 0)
+		{
+			static const FVector2D VillagerPosts[6] = {
+				FVector2D(0.f, 650.f), FVector2D(650.f, 0.f), FVector2D(0.f, -650.f),
+				FVector2D(-650.f, 0.f), FVector2D(325.f, -325.f), FVector2D(-325.f, 325.f),
+			};
+
+			FActorSpawnParameters VillagerParams;
+			VillagerParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+			VillagerParams.Owner = this;
+
+			const int32 Count = FMath::Min(VillagerCount, 6);
+			for (int32 i = 0; i < Count; ++i)
+			{
+				const FVector VillagerLoc = Center + FVector(VillagerPosts[i].X, VillagerPosts[i].Y, 92.f);
+				AVillager* Villager = GetWorld()->SpawnActor<AVillager>(
+					VillagerClass, VillagerLoc, FRotator::ZeroRotator, VillagerParams);
+				if (!Villager)
+				{
+					continue;
+				}
+
+				// 배회 중심은 스폰 지점이 아니라 마을 중심 — 주민들이 마을 전체를 고루 돌아다닌다
+				Villager->HomeLocation = Center;
+#if WITH_EDITOR
+				Villager->SetFolderPath(TEXT("Spawned/Map"));
+#endif
+				Chunk.SpawnedActors.Add(Villager);
 			}
 		}
 	}
