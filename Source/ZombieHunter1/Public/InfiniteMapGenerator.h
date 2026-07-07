@@ -22,6 +22,21 @@ struct FMapChunk
 	TArray<TObjectPtr<AActor>> SpawnedActors;
 };
 
+/** POI(특수 지역) 종류 */
+enum class EPOIType : uint8
+{
+	Village,		// 마을 (발판/NPC 등 — 후속 단계에서 채움)
+	ZombieVillage,	// 좀비마을 (적 밀집 + 보상 — 후속 단계에서 채움)
+};
+
+/** 리전 하나의 POI 정보. 시드 해시로만 결정되므로 어느 청크에서 계산해도 항상 같은 답이 나온다. */
+struct FPOIInfo
+{
+	bool bHasPOI = false;
+	FIntPoint CenterChunk = FIntPoint::ZeroValue;	// POI 중심 청크 좌표 (리전 로컬 아님, 전역 청크 좌표)
+	EPOIType Type = EPOIType::Village;
+};
+
 /**
  * 플레이어를 따라다니며 주변 청크를 동적으로 생성/제거하는 무한 맵 생성기.
  * 레벨에 하나 배치하고 Details 패널에서 바닥/장애물 메시를 지정해 사용한다.
@@ -54,6 +69,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map")
 	float ChunkSize = 2000.f;
 
+	//7 7?
 	/** 플레이어 기준 몇 청크까지 유지할지 (반경 R → (2R+1)^2 개 로드) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map")
 	int32 ViewRadiusInChunks = 3;
@@ -117,6 +133,36 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|Obstacles")
 	float ChunkEdgeMargin = 150.f;
 
+	//////////////////////////////////////////////////////////////////////////
+	// POI (마을/좀비마을 — 특수 지역)
+	// 청크를 리전(RegionSizeInChunks²) 단위로 묶고, 리전마다 시드 해시로 최대 1개의 POI 청크를 정한다.
+	// POI 청크는 장애물을 생성하지 않고 전용 바닥을 깐다. (스켈레톤 — 콘텐츠는 후속 단계)
+
+	//그러니까 8x8청크에 하나의 리전 존재
+	/** 리전 한 변의 청크 수. 리전마다 최대 1개의 POI가 배치된다. (8 × ChunkSize 2000 = 160m마다) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI", meta = (ClampMin = "2"))
+	int32 RegionSizeInChunks = 8;
+
+	/** 리전에 POI가 생길 확률(0~1). 시작 리전(0,0)은 이 값과 무관하게 항상 마을이 보장된다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float POIChance = 0.8f;
+
+	/** POI가 마을일 확률(나머지는 좀비마을). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float VillageRatio = 0.6f;
+
+	/** 마을 청크의 바닥 머티리얼. 기본값: MI_Solid_Blue (파란 바닥 = 마을) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI")
+	TObjectPtr<UMaterialInterface> VillageFloorMaterial;
+
+	/** 좀비마을 청크의 바닥 머티리얼. 기본값: MI_PrototypeGrid_TopDark (어두운 바닥 = 좀비마을) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI")
+	TObjectPtr<UMaterialInterface> ZombieVillageFloorMaterial;
+
+	/** 켜면 POI 청크 생성 시 경계 박스(마을=초록, 좀비마을=빨강)와 로그를 남긴다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Map|POI|Debug")
+	bool bDebugDrawPOI = true;
+
 private:
 	/** 현재 로드된 청크들 (좌표 → 스폰 액터들) */
 	UPROPERTY()
@@ -140,6 +186,15 @@ private:
 	void UpdateChunks(const FIntPoint& Center);
 	void GenerateChunk(const FIntPoint& Coord);
 	void UnloadChunk(const FIntPoint& Coord);
+
+	/** 청크 좌표 → 소속 리전 좌표 (음수 좌표도 올바르게 내림 나눗셈) */
+	FIntPoint ChunkToRegion(const FIntPoint& ChunkCoord) const;
+
+	/** 이 리전의 POI 정보를 시드 해시로 계산한다. 스폰/검사 없음 — 순수 계산이라 항상 같은 답. */
+	FPOIInfo GetPOIForRegion(const FIntPoint& RegionCoord) const;
+
+	/** 이 청크가 POI 중심 청크면 true를 반환하고 OutInfo를 채운다. */
+	bool GetPOIAtChunk(const FIntPoint& ChunkCoord, FPOIInfo& OutInfo) const;
 
 	AStaticMeshActor* SpawnMeshActor(UStaticMesh* Mesh, const FVector& Location,
 		const FRotator& Rotation, const FVector& Scale, UMaterialInterface* OverrideMat);

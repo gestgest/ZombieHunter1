@@ -9,6 +9,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "NavigationSystem.h" // 런타임 스폰한 바닥을 NavMesh에 반영
 #include "NavMesh/NavMeshBoundsVolume.h" // 플레이어 따라 옮길 나비 경계 볼륨
+#include "DrawDebugHelpers.h" // POI 청크 디버그 박스
 
 
 //초기
@@ -43,6 +44,18 @@ AInfiniteMapGenerator::AInfiniteMapGenerator()
 	if (GridMatFinder.Succeeded())
 	{
 		FloorMaterial = GridMatFinder.Object;
+	}
+
+	// POI 바닥 머티리얼: 마을=파랑, 좀비마을=어두운 그리드 (에디터 작업 없이 바로 구분되게 기본 지정) => 스킨 가져오기
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> VillageMatFinder(TEXT("/Game/LevelPrototyping/Materials/MI_Solid_Blue.MI_Solid_Blue"));
+	if (VillageMatFinder.Succeeded())
+	{
+		VillageFloorMaterial = VillageMatFinder.Object;
+	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ZombieVillageMatFinder(TEXT("/Game/LevelPrototyping/Materials/MI_PrototypeGrid_TopDark.MI_PrototypeGrid_TopDark"));
+	if (ZombieVillageMatFinder.Succeeded())
+	{
+		ZombieVillageFloorMaterial = ZombieVillageMatFinder.Object;
 	}
 }
 
@@ -225,7 +238,22 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 	const uint32 Hash = HashCombine(GetTypeHash(Coord), static_cast<uint32>(GlobalSeed));
 	FRandomStream Stream(static_cast<int32>(Hash));
 
+	// POI 판정: 물리 검사가 아니라 시드 해시 계산이므로 로드 순서와 무관하게 항상 같은 답
+	FPOIInfo POI;
+	const bool bIsPOIChunk = GetPOIAtChunk(Coord, POI);
+
 	// 바닥: 청크 전체를 덮도록 스케일, 윗면이 Z=0에 오도록 배치
+	// POI 청크는 전용 머티리얼로 구분 (마을=파랑, 좀비마을=어두움)
+	UMaterialInterface* FloorMat = FloorMaterial;
+	if (bIsPOIChunk)
+	{
+		UMaterialInterface* POIMat = (POI.Type == EPOIType::Village) ? VillageFloorMaterial : ZombieVillageFloorMaterial;
+		if (POIMat)
+		{
+			FloorMat = POIMat;
+		}
+	}
+
 	if (FloorMesh)
 	{
 		const float Base = FMath::Max(1.f, FloorMeshBaseSize);
@@ -234,14 +262,25 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 		const FVector FloorScale(XYScale, XYScale, ZScale);
 		const FVector FloorLoc = Center - FVector(0.f, 0.f, FloorThickness * 0.5f);
 
-		if (AStaticMeshActor* Floor = SpawnMeshActor(FloorMesh, FloorLoc, FRotator::ZeroRotator, FloorScale, FloorMaterial))
+		if (AStaticMeshActor* Floor = SpawnMeshActor(FloorMesh, FloorLoc, FRotator::ZeroRotator, FloorScale, FloorMat))
 		{
 			Chunk.SpawnedActors.Add(Floor);
 		}
 	}
 
-	// 장애물: 청크 안에 랜덤 배치 (중앙 일부는 비워두고 싶으면 ChunkEdgeMargin 조정)
-	if (ObstacleMeshes.Num() > 0)
+	//건물 생성
+	if (bIsPOIChunk && bDebugDrawPOI)
+	{
+		const bool bVillage = (POI.Type == EPOIType::Village);
+		DrawDebugBox(GetWorld(), Center + FVector(0.f, 0.f, 100.f),
+			FVector(ChunkSize * 0.5f, ChunkSize * 0.5f, 100.f),
+			bVillage ? FColor::Green : FColor::Red, false, 120.f, 0, 8.f);
+		UE_LOG(LogTemp, Log, TEXT("[POI] %s generated at chunk (%d, %d)"),
+			bVillage ? TEXT("Village") : TEXT("ZombieVillage"), Coord.X, Coord.Y);
+	}
+
+	// 장애물: 청크 안에 랜덤 배치 — POI 청크는 비워둔다 (마을 콘텐츠 자리)
+	if (!bIsPOIChunk && ObstacleMeshes.Num() > 0)
 	{
 		const int32 Count = Stream.RandRange(MinObstaclesPerChunk, FMath::Max(MinObstaclesPerChunk, MaxObstaclesPerChunk));
 		for (int32 i = 0; i < Count; ++i)
@@ -270,6 +309,96 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 
 	LoadedChunks.Add(Coord, MoveTemp(Chunk));
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+//POI chunk
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+*   Tick (0.25초마다)
+   └─ UpdateChunks          "플레이어 주변 7×7 청크 유지"
+	   └─ GenerateChunk
+		   └─ GetPOIAtChunk       "이 청크가 POI 자리야?"
+			   ├─ ChunkToRegion       "이 청크는 어느 리전 소속?"
+			   └─ GetPOIForRegion     "그 리전의 POI는 어디에 뭐가 있지?"
+*/
+
+//static. 단, 이 파일에서만 사용하는 느낌
+//멤버 함수가 아니라서 "사용하는 지점보다 위"에 정의돼 있어야 함 (컴파일러는 위→아래 한 번만 읽음)
+namespace
+{
+	// 음수에서도 내림으로 떨어지는 정수 나눗셈 (C++ 기본 나눗셈은 0 방향 절삭이라 -1/8 = 0이 됨)
+	int32 FloorDiv(int32 A, int32 B)
+	{
+		int32 Q = A / B;
+		if ((A % B != 0) && ((A < 0) != (B < 0)))
+		{
+			--Q;
+		}
+		return Q;
+	}
+}
+
+//이 청크안에 poi가 있는지
+bool AInfiniteMapGenerator::GetPOIAtChunk(const FIntPoint& ChunkCoord, FPOIInfo& OutInfo) const
+{
+	//ChunkToRegion는 
+	const FPOIInfo Info = GetPOIForRegion(ChunkToRegion(ChunkCoord));
+	if (Info.bHasPOI && Info.CenterChunk == ChunkCoord)
+	{
+		OutInfo = Info;
+		return true;
+	}
+	return false;
+}
+
+//청크 => 리전 포지션으로 변환 (15 15 청크를 1 1 region으로 변환)
+FIntPoint AInfiniteMapGenerator::ChunkToRegion(const FIntPoint& ChunkCoord) const
+{
+	const int32 Size = FMath::Max(2, RegionSizeInChunks);
+	return FIntPoint(FloorDiv(ChunkCoord.X, Size), FloorDiv(ChunkCoord.Y, Size));
+}
+
+
+//리전
+FPOIInfo AInfiniteMapGenerator::GetPOIForRegion(const FIntPoint& RegionCoord) const
+{
+	const int32 Size = FMath::Max(2, RegionSizeInChunks);
+
+	// 청크용 해시와 값이 겹치지 않게 리전 전용 소금을 섞는다 => 혹시 모르기 때문
+	const uint32 Hash = HashCombine(
+		HashCombine(GetTypeHash(RegionCoord), static_cast<uint32>(GlobalSeed)), 0x9E3779B9u);
+	FRandomStream Stream(static_cast<int32>(Hash));
+
+	FPOIInfo Info;
+
+	// 시작 리전(0,0)은 확률과 무관하게 항상 마을 — 첫 마을 발견을 보장
+	const bool bStartRegion = (RegionCoord == FIntPoint::ZeroValue);
+	if (!bStartRegion && Stream.FRand() >= POIChance) //시작 리전이 아니고 poi 구역 리전이 아닌지. 
+	{
+		return Info; // 이 리전엔 POI 없음
+	}
+	Info.bHasPOI = true;
+
+
+	// 리전 내 POI 청크 위치. 시작 리전은 플레이어 시작 청크(0,0)와 최소 2청크 떨어뜨린다
+	const int32 MinCell = bStartRegion ? 2 : 0;
+	const int32 LocalX = Stream.RandRange(MinCell, Size - 1);
+	const int32 LocalY = Stream.RandRange(MinCell, Size - 1);
+	Info.CenterChunk = FIntPoint(RegionCoord.X * Size + LocalX, RegionCoord.Y * Size + LocalY);
+
+	Info.Type = (bStartRegion || Stream.FRand() < VillageRatio)
+		? EPOIType::Village : EPOIType::ZombieVillage;
+	return Info;
+}
+
+
+
+
+
+
+
 
 //오브젝트 배치라고 생각하면 됨
 AStaticMeshActor* AInfiniteMapGenerator::SpawnMeshActor(UStaticMesh* Mesh, const FVector& Location,
