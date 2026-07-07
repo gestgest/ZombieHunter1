@@ -57,6 +57,13 @@ AInfiniteMapGenerator::AInfiniteMapGenerator()
 	{
 		ZombieVillageFloorMaterial = ZombieVillageMatFinder.Object;
 	}
+
+	// 마을 중심 발판: 무기강화 발판 BP를 기본 지정 (에디터 Details에서 교체/해제 가능)
+	static ConstructorHelpers::FClassFinder<AActor> VillagePadFinder(TEXT("/Game/BP/GameObject/BP_WeaponUpgradeZone"));
+	if (VillagePadFinder.Succeeded())
+	{
+		VillagePadClass = VillagePadFinder.Class;
+	}
 }
 
 void AInfiniteMapGenerator::BeginPlay()
@@ -270,6 +277,25 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 		}
 	}
 
+	// 마을 v1: 중심 청크에 발판(무기강화) 스폰. 청크 액터 묶음에 넣어 언로드 시 함께 제거된다.
+	// 주의: 게이지 진행도는 언로드되면 초기화됨 — 상태 영속(FPOIState)은 후속 과제.
+	if (bIsPOIChunk && POI.bIsCenter && POI.Type == EPOIType::Village && VillagePadClass && GetWorld())
+	{
+		FActorSpawnParameters PadParams;
+		PadParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		PadParams.Owner = this;
+
+		// 발판 루트(트리거 박스, 반높이 100)가 바닥 위 Z 0~200을 덮도록 +100에 스폰
+		const FVector PadLoc = Center + FVector(0.f, 0.f, 100.f);
+		if (AActor* Pad = GetWorld()->SpawnActor<AActor>(VillagePadClass, PadLoc, FRotator::ZeroRotator, PadParams))
+		{
+#if WITH_EDITOR
+			Pad->SetFolderPath(TEXT("Spawned/Map"));
+#endif
+			Chunk.SpawnedActors.Add(Pad);
+		}
+	}
+
 	//POI : 마을이나 좀비마을 와이어 박스 만듬
 	if (bIsPOIChunk && bDebugDrawPOI && POI.bIsCenter)
 	{
@@ -373,6 +399,17 @@ bool AInfiniteMapGenerator::GetPOIAtChunk(const FIntPoint& ChunkCoord, FPOIInfo&
 		OutInfo = Info;
 		OutInfo.bIsCenter = (ChunkCoord == Info.CenterChunk);
 		return true;
+	}
+	return false;
+}
+
+//월드 좌표가 "마을" 발자국 안인지 — 적 스폰 링 등 외부에서 질의 (좀비마을은 적 지역이라 해당 없음)
+bool AInfiniteMapGenerator::IsLocationInVillage(const FVector& WorldLocation) const
+{
+	FPOIInfo Info;
+	if (GetPOIAtChunk(WorldToChunk(WorldLocation), Info))
+	{
+		return Info.Type == EPOIType::Village;
 	}
 	return false;
 }

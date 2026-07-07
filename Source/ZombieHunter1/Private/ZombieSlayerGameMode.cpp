@@ -2,12 +2,23 @@
 
 
 #include "ZombieSlayerGameMode.h"
+#include "InfiniteMapGenerator.h"
 
 
 //begin
 void AZombieSlayerGameMode::StartPlay()
 {
     Super::StartPlay();
+
+    // 무한맵 생성기 캐시 — 스폰 링이 마을(안전지대)을 피하도록 질의할 대상.
+    // 없는 레벨(무한맵이 아닌 맵)이면 null로 남고, 마을 회피 없이 기존과 동일하게 동작한다.
+    TArray<AActor*> FoundGenerators;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AInfiniteMapGenerator::StaticClass(), FoundGenerators);
+    if (FoundGenerators.Num() > 0)
+    {
+        MapGenerator = Cast<AInfiniteMapGenerator>(FoundGenerators[0]);
+    }
+
     AZombieSlayerGameMode::init();
 
     // 풀 전체를 5초 기다리지 않고 즉시 링에 배치 (드립피드 대신 배치 스폰)
@@ -217,6 +228,11 @@ bool AZombieSlayerGameMode::FindReachablePointInRing(const FVector& Center, FNav
             // 투영 과정에서 링 안쪽(=시야 안)으로 크게 끌려왔으면 무효 — 팝인 방지
             if (FVector::Dist2D(OutLocation.Location, Center) >= SpawnMinDistance * 0.8f)
             {
+                // 마을은 안전지대 — 지점이 마을 발자국 안이면 버리고 재시도 (좀비마을은 허용)
+                if (MapGenerator && MapGenerator->IsLocationInVillage(OutLocation.Location))
+                {
+                    continue;
+                }
                 return true;
             }
         }

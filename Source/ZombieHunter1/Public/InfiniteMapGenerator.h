@@ -51,6 +51,9 @@ public:
 	AInfiniteMapGenerator();
 	virtual void Tick(float DeltaTime) override;
 
+	/** 월드 좌표가 "마을" 발자국 안인지 (적 스폰 제외 등 외부 질의용. 좀비마을은 해당 안 됨) */
+	bool IsLocationInVillage(const FVector& WorldLocation) const;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -187,6 +190,11 @@ protected:
 	/** 좀비마을 청크의 바닥 머티리얼. 기본값: MI_PrototypeGrid_TopDark (어두운 바닥 = 좀비마을) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI")
 	TObjectPtr<UMaterialInterface> ZombieVillageFloorMaterial;
+
+	/** 마을 중심 청크에 스폰할 발판 클래스 (기본: BP_WeaponUpgradeZone). 비우면 발판 없이 바닥만 깐다.
+	 *  청크 액터 묶음에 들어가므로 언로드 시 함께 제거된다 — 게이지 진행도 영속은 후속 과제(FPOIState). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|POI")
+	TSubclassOf<AActor> VillagePadClass;
 
 	/** 켜면 POI 청크 생성 시 경계 박스(마을=초록, 좀비마을=빨강)와 로그를 남긴다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Map|POI|Debug")
