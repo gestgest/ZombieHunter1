@@ -37,6 +37,10 @@ class ZOMBIEHUNTER1_API AEnemy : public ACombatCharacter
 	/** 다음 추격 갱신이 허용되는 월드 시간(초). TrackingPlayer가 이 시간 전 호출되면 무시. */
 	float NextTrackTime = 0.0f;
 
+	/** 시간 정지(플레이어 사망 연출) 중인지. CustomTimeDilation=0이어도 틱은 dt=0으로 계속 돌기 때문에
+	 *  TrackingPlayer 같은 로직은 이 플래그로 직접 막아야 한다. */
+	bool bFrozen = false;
+
 public:
 	// Sets default values for this character's properties
 	AEnemy();
@@ -112,6 +116,10 @@ public:
 	/** 리쉬 회수용 순간이동 — 낙하 속도/진행 중 경로를 정리하고 새 위치로 옮긴다.
 	 *  (무한맵에서 뒤처져 지형을 잃은 적을 플레이어 근처로 재배치할 때 사용) */
 	void TeleportForLeash(const FVector& NewLocation);
+
+	/** 시간 정지 on/off — 플레이어가 죽으면 게임모드가 풀 전체에 호출한다(디아블로식 사망 연출).
+	 *  CustomTimeDilation=0으로 이동/애니메이션을 그 자리에 얼리고, 진행 중이던 추격을 끊는다. */
+	void SetFrozen(bool bNewFrozen);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Enemy")
 	void DeadEnemySignal(int index);

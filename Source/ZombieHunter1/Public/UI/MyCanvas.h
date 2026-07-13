@@ -13,6 +13,7 @@
 #include "MyCanvas.generated.h"
 
 class UVirtualJoystick;
+class UDeathPanelWidget;
 
 UCLASS()
 class ZOMBIEHUNTER1_API UMyCanvas : public UUserWidget
@@ -32,9 +33,6 @@ public:
     UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
     UImage* hp_bar;
 
-    UPROPERTY(meta = (BindWidget))
-    UButton* RestartButton;
-
     // BP_Canvas에 배치한 조이스틱 인스턴스. 이름이 MoveJoystick / AimJoystick 이어야 자동 연결됨
     UPROPERTY(meta = (BindWidgetOptional))
     UVirtualJoystick* MoveJoystick;
@@ -50,15 +48,25 @@ public:
     UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
     UProgressBar* ExpBar;
 
+    //////////////////////////////////////////////////////////////////////////
+    // 사망 패널(디아블로식) — 별도 위젯 WBP_DeathPanel(부모: UDeathPanelWidget)을
+    // BP_Canvas에 "DeathPanel"이라는 이름으로 배치하면 자동 연결된다(없어도 컴파일/실행 지장 없음).
+    // 여기(MyCanvas)는 켜고 끄기만 하고, 버튼 로직은 UDeathPanelWidget이 자체 처리한다.
+
+    UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+    UDeathPanelWidget* DeathPanel;
+
 
     //BlueprintCallable 함수들
-    UFUNCTION(BlueprintCallable)
-    void RestartGame();
 
-    
+    /** 사망 패널 표시/숨김. 플레이어 OnDeath/OnRevive(및 SetHP 동기화)가 호출한다.
+     *  DeathPanel이 BP에 아직 없으면 조용히 넘어간다. */
+    UFUNCTION(BlueprintCallable)
+    void ShowDeathPanel(bool bShow);
+
+
     void UpdateCoinText(int32 Money);
     void SetProgressUISize(FVector2D size);
-    void SetVisRestartButton(bool isVis);
 
     /** 경험치 HUD 갱신 — AMyPlayer::UpdateExpUI가 호출. 위젯이 배치돼 있을 때만 그린다. */
     void UpdateExp(int32 Level, int32 Exp, int32 ExpToNext);

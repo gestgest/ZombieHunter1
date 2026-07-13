@@ -27,6 +27,7 @@
 #include "Characters/Companion.h" //동료 섭외
 #include "Components/CapsuleComponent.h" //동료 스폰 시 캡슐 반높이
 #include "ZombieGameInstance.h" //직업 선택 씬에서 고른 직업 읽기
+#include "ZombieSlayerGameMode.h" //사망 시 적 시간 정지(SetEnemiesFrozen)
 
 // 모바일(안드로이드/iOS) 플랫폼이면 true. 터치 조이스틱 표시 여부 판단용.
 // 컴파일 타임 매크로라 PC 빌드에선 항상 false → 조이스틱 숨김.
@@ -698,11 +699,11 @@ void AMyPlayer::SetHP(int32 new_hp)
     {
         CanvasWidget->SetProgressUISize(FVector2D(HP * 100, 50));
 
-        // 재시작 버튼을 현재 죽음 상태와 동기화.
+        // 사망 패널을 현재 죽음 상태와 동기화.
         // OnDeath/OnRevive는 "전환 시점"에만 1회 호출이라, BP BeginPlay(위젯 연결)가
-        // ReStart()보다 먼저 돌면서 HP=0으로 버튼이 켜진 경우 아무도 안 꺼주는 빈틈이 있다.
-        // 여기서 매번 맞춰주면 호출 순서와 무관하게 버튼 상태가 항상 올바르다.
-        CanvasWidget->SetVisRestartButton(IsDead);
+        // ReStart()보다 먼저 돌면서 HP=0으로 패널이 켜진 경우 아무도 안 꺼주는 빈틈이 있다.
+        // 여기서 매번 맞춰주면 호출 순서와 무관하게 패널 상태가 항상 올바르다.
+        CanvasWidget->ShowDeathPanel(IsDead);
     }
 
     // BP 이벤트에 현재 죽음 상태 통보(사망 연출 등)
@@ -718,18 +719,23 @@ bool AMyPlayer::checkDead()
 // 살아있음 → 죽음 전환 시 베이스(SetDead)가 1회 호출.
 void AMyPlayer::OnDeath()
 {
-    // [디버그] 시작 직후 버튼이 켜지는 원인 추적 — 원인 잡히면 삭제할 것
-    UE_LOG(LogTemp, Warning, TEXT("[RestartButton] OnDeath() 발동! HP=%d @ %.2fs"),
-        HP, GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
-
     // 진행 중인 공격 몽타주를 즉시 끊어 슬롯을 비움 → ABP의 죽음 상태가 바로 재생됨
     StopAnimMontage();
 
     GetCharacterMovement()->DisableMovement();
 
-    if (CanvasWidget) { CanvasWidget->SetVisRestartButton(true); } //버튼 on
+    // 디아블로식 사망 연출 — 적들의 시간을 멈춘다(플레이어 죽음 애니메이션은 그대로 재생).
+    if (AZombieSlayerGameMode* GM = GetWorld()->GetAuthGameMode<AZombieSlayerGameMode>())
+    {
+        GM->SetEnemiesFrozen(true);
+    }
 
-    // 죽으면 UI(재시작 버튼)만 조작 가능
+    if (CanvasWidget)
+    {
+        CanvasWidget->ShowDeathPanel(true); //사망 패널 on (BP에 DeathPanel이 있을 때만)
+    }
+
+    // 죽으면 UI(사망 패널)만 조작 가능
     if (controller)
     {
         controller->bShowMouseCursor = true;
@@ -742,7 +748,16 @@ void AMyPlayer::OnRevive()
 {
     GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
-    if (CanvasWidget) { CanvasWidget->SetVisRestartButton(false); } //버튼 off
+    // 죽을 때 멈춘 적들의 시간을 다시 흐르게 한다.
+    if (AZombieSlayerGameMode* GM = GetWorld()->GetAuthGameMode<AZombieSlayerGameMode>())
+    {
+        GM->SetEnemiesFrozen(false);
+    }
+
+    if (CanvasWidget)
+    {
+        CanvasWidget->ShowDeathPanel(false); //사망 패널 off
+    }
 
     if (controller)
     {
@@ -825,11 +840,8 @@ void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
         }
 
         // 위젯이 막 연결된 시점에 현재 HP 기준으로 사망 UI/HP바를 동기화한다.
-        // BeginPlay 때는 CanvasWidget이 아직 null이라 버튼을 못 껐을 수 있으므로 여기서 확정.
-        // [디버그] 이 시점의 HP 확인 — 원인 잡히면 삭제할 것
-        UE_LOG(LogTemp, Warning, TEXT("[RestartButton] SetCanvasWidget 호출됨, HP=%d @ %.2fs"),
-            HP, GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
-        CanvasWidget->SetVisRestartButton(HP <= 0);
+        // BeginPlay 때는 CanvasWidget이 아직 null이라 패널을 못 껐을 수 있으므로 여기서 확정.
+        CanvasWidget->ShowDeathPanel(HP <= 0);
         CanvasWidget->SetProgressUISize(FVector2D(HP * 100, 50));
         UpdateExpUI(); // 위젯 연결 시점에 경험치 표시도 현재 값으로 맞춘다
     }

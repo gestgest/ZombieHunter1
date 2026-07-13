@@ -68,6 +68,13 @@ void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 // (이름은 BP 호환을 위해 TrackingPlayer 유지)
 void AEnemy::TrackingPlayer()
 {
+	// 시간 정지 중(플레이어 사망 연출)에는 추격 갱신 자체를 하지 않는다.
+	// CustomTimeDilation=0이어도 틱은 dt=0으로 계속 돌아서 여기가 매 프레임 불릴 수 있다.
+	if (bFrozen)
+	{
+		return;
+	}
+
 	// 갱신 간격 제한 — BP가 매 프레임 호출해도 여기서 걸러진다.
 	// 경로 재요청은 프레임 단위로 할 필요가 없고, 매 프레임 하면 적 수만큼 길찾기 비용이 쌓인다.
 	const float Now = GetWorld()->GetTimeSeconds();
@@ -370,6 +377,23 @@ void AEnemy::TeleportForLeash(const FVector& NewLocation)
 	{
 		Move->SetMovementMode(MOVE_Walking); // 낙하(MOVE_Falling) 상태였어도 즉시 보행 복귀
 	}
+}
+
+// 시간 정지 on/off — 플레이어가 죽으면 게임모드(SetEnemiesFrozen)가 풀 전체에 호출한다.
+void AEnemy::SetFrozen(bool bNewFrozen)
+{
+	bFrozen = bNewFrozen;
+
+	// 0이면 이 액터의 틱/이동/애니메이션이 전부 dt=0으로 얼어붙는다(그 자리에 정지 화면처럼).
+	CustomTimeDilation = bNewFrozen ? 0.0f : 1.0f;
+
+	if (bNewFrozen && aiController)
+	{
+		// AI 컨트롤러는 별개 액터라 시간 정지의 영향을 안 받는다 — 진행 중이던 경로를 직접 끊는다.
+		aiController->StopMovement();
+		aiController->ClearFocus(EAIFocusPriority::Gameplay);
+	}
+	// 해제 시에는 아무것도 안 해도 된다 — 다음 TrackingPlayer가 추격을 다시 잡는다.
 }
 
 void AEnemy::SetAIController()

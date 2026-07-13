@@ -314,3 +314,28 @@ void AZombieSlayerGameMode::DestroyCoin(int index)
         coinPool[index]->SetActorHiddenInGame(true);  // 비활성화
     }
 }
+
+// 디아블로식 사망 연출 — 플레이어가 죽으면(OnDeath) 적들의 시간을 멈추고,
+// 부활하면(OnRevive) 다시 흐르게 한다. 플레이어 자신은 안 얼리므로 죽음 애니메이션은 그대로 재생된다.
+void AZombieSlayerGameMode::SetEnemiesFrozen(bool bFrozen)
+{
+    for (AEnemy* enemy : enemyPool)
+    {
+        if (IsValid(enemy))
+        {
+            enemy->SetFrozen(bFrozen);
+        }
+    }
+
+    // 죽어 있는 동안 새 적이 스폰되거나 리쉬 재배치가 돌면 연출이 깨진다 — 타이머도 같이 멈춘다.
+    if (bFrozen)
+    {
+        GetWorldTimerManager().PauseTimer(SpawnTimerHandle);
+        GetWorldTimerManager().PauseTimer(LeashTimerHandle);
+    }
+    else
+    {
+        GetWorldTimerManager().UnPauseTimer(SpawnTimerHandle);
+        GetWorldTimerManager().UnPauseTimer(LeashTimerHandle);
+    }
+}
