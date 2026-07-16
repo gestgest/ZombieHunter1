@@ -56,7 +56,7 @@ public:
 
 	/** 직업별 공격 몽타주 — 이 캐릭터의 "스켈레톤에 맞게" 리타게팅된 몽타주를 직업 이름으로 매핑한다.
 	 *  애니는 스켈레톤에 묶이므로 직업(공유 컴포넌트)이 아니라 캐릭터가 소유해야 한다.
-	 *  키 = 직업의 JobName(예: "Archer"/"Swordsman"/"Mage"/"Healer"). 비우거나 키가 없으면 AttackMontage로 폴백. */
+	 *  키 = 직업의 JobName(예: "Archer"/"Warrior"/"Mage"/"Healer"). 비우거나 키가 없으면 AttackMontage로 폴백. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	TMap<FName, UAnimMontage*> JobAttackMontages;
 

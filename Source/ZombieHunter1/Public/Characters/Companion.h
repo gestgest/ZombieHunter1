@@ -30,7 +30,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Companion")
 	AActor* Leader = nullptr;
 
-	/** 시작 시 부착할 직업 클래스. 직업 BP 서브클래스(BP_SwordsmanJob 등)를 지정. */
+	/** 시작 시 부착할 직업 클래스. 직업 BP 서브클래스(BP_WarriorJob 등)를 지정. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion")
 	TSubclassOf<UJobComponent> DefaultJobClass;
 

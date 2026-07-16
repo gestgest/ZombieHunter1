@@ -4,20 +4,20 @@
 
 #include "CoreMinimal.h"
 #include "Jobs/JobComponent.h"
-#include "SwordsmanJob.generated.h"
+#include "WarriorJob.generated.h"
 
 /**
- * 검사(근접) 직업.
+ * 전사(근접) 직업.
  * 전방으로 구체 스윕을 날려 범위 내 적을 동시에 타격하고 넉백시킨다.
  * (기존 AMyPlayer::hit() 로직을 그대로 옮긴 것)
  */
 UCLASS()
-class ZOMBIEHUNTER1_API USwordsmanJob : public UJobComponent
+class ZOMBIEHUNTER1_API UWarriorJob : public UJobComponent
 {
 	GENERATED_BODY()
 
 public:
-	USwordsmanJob();
+	UWarriorJob();
 
 	/** 전방 스윕 거리(cm) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Melee")

@@ -1,23 +1,23 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Jobs/SwordsmanJob.h"
+#include "Jobs/WarriorJob.h"
 #include "Characters/MyPlayer.h"
 #include "Characters/Enemy.h"
 #include "Engine/World.h"
 #include "CollisionShape.h"
 #include "DrawDebugHelpers.h" //근접 스윕 범위 디버그
 
-USwordsmanJob::USwordsmanJob()
+UWarriorJob::UWarriorJob()
 {
-	JobName = TEXT("Swordsman");
+	JobName = TEXT("Warrior");
 
 	// 근접: 붙어서 휘둘러야 하므로 교전 사거리를 짧게(스윕 사거리 150보다 조금 안쪽).
 	EngageRange = 130.0f;
 
-	// 무기(WeaponMesh)는 BP 서브클래스(예: BP_SwordsmanJob)에서 직접 지정한다.
+	// 무기(WeaponMesh)는 BP 서브클래스(예: BP_WarriorJob)에서 직접 지정한다.
 }
 
-void USwordsmanJob::OnAttackNotify(FName NotifyName)
+void UWarriorJob::OnAttackNotify(FName NotifyName)
 {
 	if (!OwnerCharacter)
 	{

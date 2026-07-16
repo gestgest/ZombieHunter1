@@ -19,7 +19,7 @@
 #include "UI/VirtualJoystick.h"
 #include "Engine/Engine.h" //GEngine 화면 디버그
 #include "Jobs/JobComponent.h"
-#include "Jobs/SwordsmanJob.h"
+#include "Jobs/WarriorJob.h"
 #include "Components/SlateWrapperTypes.h" //ESlateVisibility
 #include "Components/SkeletalMeshComponent.h" //무기 컴포넌트 메시 교체
 #include "Components/ChildActorComponent.h" //무기 ChildActor(Weapon_BP)
@@ -72,8 +72,8 @@ AMyPlayer::AMyPlayer()
 	NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
 	NavInvoker->SetGenerationRadii(7000.0f, 9000.0f);
 
-	// 기본 직업: 검사. 에디터(BP)에서 DefaultJobClass를 바꾸면 다른 직업으로 시작한다.
-	DefaultJobClass = USwordsmanJob::StaticClass();
+	// 기본 직업: 전사. 에디터(BP)에서 DefaultJobClass를 바꾸면 다른 직업으로 시작한다.
+	DefaultJobClass = UWarriorJob::StaticClass();
 }
 
 
@@ -114,7 +114,7 @@ void AMyPlayer::BeginPlay()
     // 직업(Job) 컴포넌트 생성 — 시작 시 1개 고정.
     if (!DefaultJobClass)
     {
-        DefaultJobClass = USwordsmanJob::StaticClass();
+        DefaultJobClass = UWarriorJob::StaticClass();
     }
 
     SetJob();
