@@ -214,14 +214,30 @@ void AMyPlayer::SetJob()
     // 직업 선택 씬에서 고른 직업이 GameInstance에 실려 왔으면 그걸 우선 사용한다.
     // 선택이 없거나(None) GameInstance 클래스를 아직 지정 안 했으면(캐스트 실패)
     // 기존 DefaultJobClass 그대로 — 에디터 셋업 전에도 동작이 바뀌지 않는다.
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White,
+            FString::Printf(TEXT("선택했어!")));
+    }
     if (UZombieGameInstance* GI = Cast<UZombieGameInstance>(GetGameInstance()))
     {
         if (GI->SelectedJobClass)
         {
+            if (GEngine)
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White,
+                    FString::Printf(TEXT("선택한 직업 : %s"), *GetNameSafe(GI->SelectedJobClass)));
+            }
             DefaultJobClass = GI->SelectedJobClass;
         }
     }
 
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White,
+            FString::Printf(TEXT("최종 결과 %s"), *GetNameSafe(DefaultJobClass)));
+    }
     CurrentJob = NewObject<UJobComponent>(this, DefaultJobClass);
     if (CurrentJob)
     {

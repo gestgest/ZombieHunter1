@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Characters/CombatCharacter.h"
 #include "Components/SkeletalMeshComponent.h"

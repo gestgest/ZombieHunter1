@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -6,6 +6,7 @@
 #include "Characters/CombatCharacter.h"
 #include "UI/MyCanvas.h"
 #include "MyPlayer.generated.h"
+
 
 class USpringArmComponent;
 class UCameraComponent;
@@ -324,11 +325,10 @@ private:
 	float AttackInterval = 0.4f;
 
 	// 공격 몽타주(AttackMontage)는 베이스(ACombatCharacter)로 이동. 노티파이가 직업의 OnAttackNotify() 호출.
-
 	//////////////////////////////////////////////////////////////////////////
 	// 직업(Job) 시스템 — 시작 시 직업 1개를 생성해 부착한다.
 
-	/** 시작 시 부착할 직업 클래스(검사/궁수/힐러/마법사). 비우면 검사로 기본 설정. */
+	/** 시작 시 부착할 직업 클래스(전사/궁수/힐러/마법사). 비우면 전사로 기본 설정. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<UJobComponent> DefaultJobClass;
 

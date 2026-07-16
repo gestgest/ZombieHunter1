@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/ArcherJob.h"
 #include "Projectiles/Projectile.h"
@@ -20,7 +20,7 @@ void UArcherJob::Attack()
 
 	FireArrow();
 }
-
+ 
 void UArcherJob::FireArrow()
 {
 	// 화살은 단일 대상 발사체 (폭발 없음). 스폰은 베이스 공용 헬퍼가 담당.

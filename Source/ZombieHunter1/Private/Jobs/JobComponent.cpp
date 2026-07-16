@@ -33,6 +33,7 @@ void UJobComponent::EquipWeapon()
 
 void UJobComponent::Attack()
 {
+	
 	// 애니(몽타주)는 캐릭터가 자기 스켈레톤에 맞게 소유한다. 직업은 자기 JobName으로 골라 재생만 시킨다.
 	// 몽타주의 Notify는 캐릭터 베이스(ACombatCharacter)가 받아 OnAttackNotify()로 되돌려준다.
 	if (ACombatCharacter* CC = Cast<ACombatCharacter>(OwnerCharacter))

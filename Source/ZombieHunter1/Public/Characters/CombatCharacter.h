@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -49,7 +49,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	bool bArmed = true;
 
-	/** 공격 몽타주. 재생 중 Notify가 HandleAttackNotify()를 호출한다(직업 없는 적 + 맵에 없을 때 폴백용). */
+	/** JobAttackMontages에 없다면 호출되는 공격 몽타주. 거의 안쓰인다.
+	Notify가 HandleAttackNotify()를 호출한다(직업 없는 적 + 맵에 없을 때 폴백용). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	UAnimMontage* AttackMontage = nullptr;
 
