@@ -115,18 +115,6 @@ void ACompanion::UpdateDecision()
 {
 	CurrentTarget = FindNearestEnemy();
 
-	// 진단: 직업 유무 + 가장 가까운 적까지 거리. (지속시간을 갱신 주기에 맞춰 깜빡임 방지)
-	//  job=NULL → DefaultJobClass 미설정 / target=NONE → 탐지반경(DetectRadius) 안에 적 없음.
-	if (bDebugCombat && GEngine)
-	{
-		const FString Msg = FString::Printf(TEXT("[Companion] job=%s  target=%s"),
-			CurrentJob ? *CurrentJob->JobName.ToString() : TEXT("NULL"),
-			CurrentTarget ? *FString::Printf(TEXT("dist %.0f (engage %.0f)"),
-				FVector::Dist(GetActorLocation(), CurrentTarget->GetActorLocation()),
-				(CurrentJob && CurrentJob->EngageRange > 0.0f) ? CurrentJob->EngageRange : AttackRange) : TEXT("NONE"));
-		GEngine->AddOnScreenDebugMessage((int32)GetUniqueID(), DecisionInterval + 0.05f, FColor::Cyan, Msg);
-	}
-
 	if (CurrentTarget)
 	{
 		// === 교전 ===

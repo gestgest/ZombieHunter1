@@ -38,7 +38,7 @@ void UJobComponent::Attack()
 	// 몽타주의 Notify는 캐릭터 베이스(ACombatCharacter)가 받아 OnAttackNotify()로 되돌려준다.
 	if (ACombatCharacter* CC = Cast<ACombatCharacter>(OwnerCharacter))
 	{
-		if (UAnimMontage* Montage = CC->GetAttackMontageForJob(JobName))
+		if (UAnimMontage* Montage = CC->GetAttackMontageForJob(JobType))
 		{
 			CC->PlayAnimMontage(Montage);
 		}

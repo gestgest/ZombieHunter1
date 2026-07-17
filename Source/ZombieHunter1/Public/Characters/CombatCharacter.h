@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Jobs/JobComponent.h"
 #include "CombatCharacter.generated.h"
 
 class UAnimMontage;
@@ -56,13 +57,13 @@ public:
 
 	/** 직업별 공격 몽타주 — 이 캐릭터의 "스켈레톤에 맞게" 리타게팅된 몽타주를 직업 이름으로 매핑한다.
 	 *  애니는 스켈레톤에 묶이므로 직업(공유 컴포넌트)이 아니라 캐릭터가 소유해야 한다.
-	 *  키 = 직업의 JobName(예: "Archer"/"Warrior"/"Mage"/"Healer"). 비우거나 키가 없으면 AttackMontage로 폴백. */
+	 *  키 = 직업의 enum 비우거나 키가 없으면 AttackMontage로 폴백. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-	TMap<FName, UAnimMontage*> JobAttackMontages;
+	TMap<EJobType, UAnimMontage*> JobAttackMontages;
 
 	/** JobName에 해당하는 이 캐릭터의 공격 몽타주를 반환. 맵에 없으면 단일 AttackMontage로 폴백(없으면 null). */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
-	UAnimMontage* GetAttackMontageForJob(FName JobName) const;
+	UAnimMontage* GetAttackMontageForJob(EJobType JobType) const;
 
 	/** true면 이 전투 캐릭터의 상태/공격 디버그를 화면에 그린다. 플레이어/동료/적 공용 토글. 기본 꺼짐. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Debug")

@@ -1,11 +1,11 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/MageJob.h"
 #include "Projectiles/Projectile.h"
 
 UMageJob::UMageJob()
 {
-	JobName = TEXT("Mage");
+	JobType = EJobType::Mage;
 
 	// 마법사는 궁수보다 느리지만 강하게 (범위 피해 보정).
 	AttackInterval = 0.8f;

@@ -12,6 +12,16 @@ class USoundBase;
 class AProjectile;
 class USkeletalMesh;
 
+//enum의 E
+UENUM(BlueprintType)
+enum class EJobType : uint8
+{
+	Warrior UMETA(DisplayName = "전사"),
+	Archer UMETA(DisplayName = "궁수"),
+	Mage UMETA(DisplayName = "마법사"),
+	Healer UMETA(DisplayName = "힐러"),
+};
+
 /**
  * 직업(Job) 베이스 컴포넌트.
  * 이동/조준은 소유 캐릭터(플레이어 또는 동료 AI)가 담당하고, "공격 방식"만 이 컴포넌트로 분리한다.
@@ -35,7 +45,7 @@ public:
 
 	// 직업 이름
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Job")
-	FName JobName = TEXT("Job");
+	EJobType JobType = EJobType::Warrior;
 
 	// 피해량
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Job|Combat")

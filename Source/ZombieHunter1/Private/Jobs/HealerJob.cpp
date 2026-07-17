@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Jobs/HealerJob.h"
 #include "Characters/CombatCharacter.h"
@@ -7,7 +7,7 @@
 
 UHealerJob::UHealerJob()
 {
-	JobName = TEXT("Healer");
+	JobType = EJobType::Healer;
 	// 힐러는 적을 때리지 않는다. "공격"은 힐 시전이고, 닿은 아군을 회복한다.
 }
 
