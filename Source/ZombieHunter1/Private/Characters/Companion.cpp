@@ -115,6 +115,7 @@ void ACompanion::UpdateDecision()
 {
 	CurrentTarget = FindNearestEnemy();
 
+
 	if (CurrentTarget)
 	{
 		// === 교전 ===
@@ -125,12 +126,18 @@ void ACompanion::UpdateDecision()
 		const float Engage = (CurrentJob && CurrentJob->EngageRange > 0.0f) ? CurrentJob->EngageRange : AttackRange;
 
 		const float Dist = FVector::Dist(GetActorLocation(), CurrentTarget->GetActorLocation());
+		if (bDebugCombat && GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::White,
+				FString::Printf(TEXT("Dist: %.0f / Engage: %.0f"), Dist, Engage));
+		}
+
 		if (AICon)
 		{
 			if (Dist > Engage)
 			{
 				// 사거리 밖 → 적에게 접근 (조금 더 가깝게 멈추도록 수용 반경을 줄임)
-				AICon->MoveToActor(CurrentTarget, Engage * 0.8f);
+				AICon->MoveToActor(CurrentTarget, Engage * 0.8f, false);
 			}
 			else
 			{
