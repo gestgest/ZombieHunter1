@@ -488,60 +488,17 @@ void AMyPlayer::SetWeaponMesh(USkeletalMesh* NewMesh)
 
 ////////////////////////////////       Companion         ///////////////////
 // 동료 섭외 — 플레이어 옆에 동료를 스폰해 따라다니며 싸우게 한다.
-void AMyPlayer::RecruitCompanion()
+void AMyPlayer::RecruitCompanion(TSubclassOf<UJobComponent> JobComponent)
 {
-    if (!CompanionClass)
-    {
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange,
-                TEXT("[Companion] CompanionClass가 비어있음 - BP_MyPlayer Details에서 BP_Companion 지정"));
-        }
-        return;
-    }
-
     UWorld* World = GetWorld();
-    if (!World)
+    if (!CheckCompanion(World))
     {
         return;
     }
 
-    // 죽어서 사라진 동료는 목록에서 제거한 뒤 인원 체크.
-    Companions.RemoveAll([](const ACompanion* C) { return !IsValid(C); });
-    if (Companions.Num() >= MaxCompanions)
-    {
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow,
-                FString::Printf(TEXT("[Companion] 최대 인원(%d명) 도달 - 더 섭외 불가"), MaxCompanions));
-        }
-        return;
-    }
-
-    // 플레이어 회전 기준으로 오프셋을 적용해 옆/뒤쪽에 스폰(여러 명이면 살짝씩 벌어지게).
-    const FRotator SpawnRot = GetActorRotation();
-    FVector Offset = CompanionSpawnOffset;
-    Offset.Y += Companions.Num() * 80.0f; // 두 번째부터는 옆으로 더 벌려 겹침 방지
-    FVector SpawnLoc = GetActorLocation() + SpawnRot.RotateVector(Offset);
-
-    // 바닥에 맞춰 스폰 — 위에서 아래로 트레이스해 지면을 찾고, 그 위에 캡슐 반높이만큼 띄운다.
-    // (플레이어 Z 그대로 쓰면 캡슐 높이 차이로 바닥에 끼이거나 허공에서 떨어져 안 보일 수 있음)
-    {
-        const FVector TraceStart = SpawnLoc + FVector(0, 0, 200.0f);
-        const FVector TraceEnd = SpawnLoc - FVector(0, 0, 1000.0f);
-        FHitResult Hit;
-        FCollisionQueryParams Q;
-        Q.AddIgnoredActor(this);
-        if (World->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Q))
-        {
-            const float HalfHeight = GetCapsuleComponent() ? GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 88.0f;
-            SpawnLoc = Hit.ImpactPoint + FVector(0, 0, HalfHeight + 2.0f);
-        }
-    }
-    const FTransform SpawnTM(SpawnRot, SpawnLoc);
+    const FTransform SpawnTM = SetSpawnTransformCompanion(World);
 
     // 지연 스폰: BeginPlay가 돌기 전에 Leader/직업을 세팅해야
-    // 동료가 곧바로 플레이어를 따라오고 같은 직업으로 싸운다.
     ACompanion* Companion = World->SpawnActorDeferred<ACompanion>(
         CompanionClass, SpawnTM, this, nullptr,
         ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
@@ -552,11 +509,16 @@ void AMyPlayer::RecruitCompanion()
     }
 
     Companion->Leader = this;
-    // 동료 BP에 직업이 안 정해져 있으면 플레이어와 같은 직업을 물려준다.
-    if (!Companion->DefaultJobClass)
+
+    if (GEngine)
     {
-        Companion->DefaultJobClass = DefaultJobClass;
+        UJobComponent* JobCDO = JobComponent.GetDefaultObject();
+        const FString JobTypeStr = JobCDO ? UEnum::GetValueAsString(JobCDO->JobType) : TEXT("None(맵에 없음)");
+
+        GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green,
+            FString::Printf(TEXT("[Companion] JobComponent : %s"), *JobTypeStr));
     }
+    Companion->DefaultJobClass = JobComponent; //직업 셋팅
 
     UGameplayStatics::FinishSpawningActor(Companion, SpawnTM);
 
@@ -589,11 +551,10 @@ void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
     PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &AMyPlayer::OnRightMousePressed);
     PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Released, this, &AMyPlayer::OnRightMouseReleased);
 
-    // 디버그/테스트: C 키로 동료 섭외(게임패드 Y로도). bDebugRecruitKey로 토글.
-    if (bDebugRecruitKey)
+    // 디버그/테스트: C 키로 돈 획득(AddMoney). bDebugAddMoneyKey로 토글.
+    if (bDebugAddMoneyKey)
     {
-        PlayerInputComponent->BindKey(EKeys::C, IE_Pressed, this, &AMyPlayer::RecruitCompanion);
-        PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &AMyPlayer::RecruitCompanion); //게임패드
+        PlayerInputComponent->BindKey(EKeys::C, IE_Pressed, this, &AMyPlayer::AddMoney);
     }
 }
 
@@ -861,4 +822,62 @@ void AMyPlayer::SetCanvasWidget(UMyCanvas* CW)
         CanvasWidget->SetProgressUISize(FVector2D(HP * 100, 50));
         UpdateExpUI(); // 위젯 연결 시점에 경험치 표시도 현재 값으로 맞춘다
     }
+}
+
+
+//
+bool AMyPlayer::CheckCompanion(UWorld* World)
+{
+    if (!CompanionClass)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange,
+                TEXT("[Companion] CompanionClass가 비어있음 - BP_MyPlayer Details에서 BP_Companion 지정"));
+        }
+        return false;
+    }
+
+    if (!World)
+    {
+        return false;
+    }
+
+    // 죽어서 사라진 동료는 목록에서 제거한 뒤 인원 체크.
+    Companions.RemoveAll([](const ACompanion* C) { return !IsValid(C); });
+    if (Companions.Num() >= MaxCompanions)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow,
+                FString::Printf(TEXT("[Companion] 최대 인원(%d명) 도달 - 더 섭외 불가"), MaxCompanions));
+        }
+        return false;
+    }
+    return true;
+}
+
+FTransform AMyPlayer::SetSpawnTransformCompanion(UWorld* World)
+{
+    // 플레이어 회전 기준으로 오프셋을 적용해 옆/뒤쪽에 스폰(여러 명이면 살짝씩 벌어지게).
+    const FRotator SpawnRot = GetActorRotation();
+    FVector Offset = CompanionSpawnOffset;
+    Offset.Y += Companions.Num() * 80.0f; // 두 번째부터는 옆으로 더 벌려 겹침 방지
+    FVector SpawnLoc = GetActorLocation() + SpawnRot.RotateVector(Offset);
+
+    // 바닥에 맞춰 스폰 — 위에서 아래로 트레이스해 지면을 찾고, 그 위에 캡슐 반높이만큼 띄운다.
+    // (플레이어 Z 그대로 쓰면 캡슐 높이 차이로 바닥에 끼이거나 허공에서 떨어져 안 보일 수 있음)
+    const FVector TraceStart = SpawnLoc + FVector(0, 0, 200.0f);
+    const FVector TraceEnd = SpawnLoc - FVector(0, 0, 1000.0f);
+    FHitResult Hit;
+    FCollisionQueryParams Q;
+    Q.AddIgnoredActor(this);
+    if (World->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Q))
+    {
+        const float HalfHeight = GetCapsuleComponent() ? GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 88.0f;
+        SpawnLoc = Hit.ImpactPoint + FVector(0, 0, HalfHeight + 2.0f);
+    }
+
+    FTransform SpawnTM(SpawnRot, SpawnLoc);
+    return SpawnTM;
 }

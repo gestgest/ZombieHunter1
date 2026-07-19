@@ -110,7 +110,7 @@ public:
 
 	/** 동료를 플레이어 근처에 스폰해 따라다니게 한다. 발동 조건은 BP/디버그 키(C)에서 이 함수를 호출해 처리. */
 	UFUNCTION(BlueprintCallable, Category = "Companion")
-	void RecruitCompanion();
+	void RecruitCompanion(TSubclassOf<UJobComponent> JobComponent);
 
 	/** 키보드(WASD) Enhanced Input(IA_Move)에서 호출. 카메라가 고정된 월드축 기준으로 이동
 	 *  (컨트롤러 회전을 타지 않아 탑다운 카메라와 항상 일치). Triggered 이벤트에 연결할 것. */
@@ -367,10 +367,12 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = "Companion", meta = (AllowPrivateAccess = "true"))
 	TArray<ACompanion*> Companions;
 
-	/** true면 C 키(게임패드 Y)로 동료를 섭외하는 디버그 바인딩을 켠다.
-	 *  실제 발동 조건이 생기면 끄고 BP에서 RecruitCompanion 호출로 교체. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion|Debug", meta = (AllowPrivateAccess = "true"))
-	bool bDebugRecruitKey = true;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Companion|Debug", meta = (AllowPrivateAccess = "true"))
+	//bool bDebugRecruitKey = true;
+
+	/** true면 C 키로 디버그용 돈 획득(AddMoney)을 테스트할 수 있다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Debug", meta = (AllowPrivateAccess = "true"))
+	bool bDebugAddMoneyKey = true;
 
 	//////////////////////////////////////////////////////////////////////////
 	// 터치 조이스틱 (C++가 자동 생성해서 화면에 띄움 — 위젯 BP 불필요)
@@ -383,4 +385,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TopDown|Touch", meta = (AllowPrivateAccess = "true"))
 	UTexture2D* JoystickHandleTexture = nullptr;
 
+
+	bool CheckCompanion(UWorld* World);
+	FTransform SetSpawnTransformCompanion(UWorld* World);
 };
