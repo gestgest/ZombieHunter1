@@ -100,6 +100,10 @@ public:
 	/** 매 프레임 호출(플레이어 Tick). 조준과 무관한 패시브 효과(자가 회복 등)용. 기본 구현 없음. */
 	virtual void TickJob(float DeltaTime);
 
+	USkeletalMesh * GetWeaponMesh()
+	{
+		return WeaponMesh;
+	}
 
 protected:
 	/** 소유 캐릭터 — 플레이어 또는 동료 AI (InitializeForOwner에서 설정) */
