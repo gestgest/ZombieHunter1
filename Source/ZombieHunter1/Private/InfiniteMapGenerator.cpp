@@ -506,74 +506,87 @@ void AInfiniteMapGenerator::SetupVillege(bool bIsPOIChunk, FPOIInfo & POI, const
 			}
 		}
 
-		// 경비병: 발판 주변 고정 자리에 배치. 랜덤 산포가 아니라 고정 레이아웃 — 재생성돼도 항상 같은 그림.
-		// 리더 없이 스폰하고 경비 모드를 켜서 "자리를 지키다 → 적 오면 교전 → 끝나면 복귀"로 동작.
-		if (VillageGuardClass && VillageGuardCount > 0)
+		SpawnVillageGuards(Center, Chunk);
+		SpawnVillagers(Center, Chunk);
+	}
+}
+
+// 경비병: 발판 주변 고정 자리에 배치. 랜덤 산포가 아니라 고정 레이아웃 — 재생성돼도 항상 같은 그림.
+// 리더 없이 스폰하고 경비 모드를 켜서 "자리를 지키다 → 적 오면 교전 → 끝나면 복귀"로 동작.
+void AInfiniteMapGenerator::SpawnVillageGuards(const FVector& Center, FMapChunk& Chunk)
+{
+	if (!VillageGuardClass || VillageGuardCount <= 0)
+	{
+		return;
+	}
+
+	// 발판 대각선 네 모서리 자리 (VillageGuardCount만큼 앞에서부터 사용)
+	static const FVector2D GuardPosts[4] = {
+		FVector2D(450.f, 450.f), FVector2D(-450.f, -450.f),
+		FVector2D(450.f, -450.f), FVector2D(-450.f, 450.f),
+	};
+
+	FActorSpawnParameters GuardParams;
+	GuardParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	GuardParams.Owner = this;
+
+	const int32 Count = FMath::Min(VillageGuardCount, 4);
+	for (int32 i = 0; i < Count; ++i)
+	{
+		// 캡슐 반높이(~90)만큼 띄워 바닥 위에 스폰
+		const FVector GuardLoc = Center + FVector(GuardPosts[i].X, GuardPosts[i].Y, 92.f);
+		ACompanion* Guard = GetWorld()->SpawnActor<ACompanion>(
+			VillageGuardClass, GuardLoc, FRotator::ZeroRotator, GuardParams);
+		if (!Guard)
 		{
-			// 발판 대각선 네 모서리 자리 (VillageGuardCount만큼 앞에서부터 사용)
-			static const FVector2D GuardPosts[4] = {
-				FVector2D(450.f, 450.f), FVector2D(-450.f, -450.f),
-				FVector2D(450.f, -450.f), FVector2D(-450.f, 450.f),
-			};
-
-			FActorSpawnParameters GuardParams;
-			GuardParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-			GuardParams.Owner = this;
-
-			const int32 Count = FMath::Min(VillageGuardCount, 4);
-			for (int32 i = 0; i < Count; ++i)
-			{
-				// 캡슐 반높이(~90)만큼 띄워 바닥 위에 스폰
-				const FVector GuardLoc = Center + FVector(GuardPosts[i].X, GuardPosts[i].Y, 92.f);
-				ACompanion* Guard = GetWorld()->SpawnActor<ACompanion>(
-					VillageGuardClass, GuardLoc, FRotator::ZeroRotator, GuardParams);
-				if (!Guard)
-				{
-					continue;
-				}
-
-				Guard->Leader = nullptr;        // 아무도 안 따라간다
-				Guard->bGuardHome = true;       // 대신 자기 자리를 지킨다
-				Guard->HomeLocation = GuardLoc;
-#if WITH_EDITOR
-				Guard->SetFolderPath(TEXT("Spawned/Map"));
-#endif
-				Chunk.SpawnedActors.Add(Guard); // 청크와 함께 언로드/재생성
-			}
+			continue;
 		}
 
-		// 주민(비전투): 발판과 겹치지 않는 고정 자리에서 시작해 마을 중심 주변을 배회.
-		// 스폰 위치는 고정이지만 이후엔 각자 알아서 돌아다녀서 마을이 살아 보인다.
-		if (VillagerClass && VillagerCount > 0)
-		{
-			static const FVector2D VillagerPosts[6] = {
-				FVector2D(0.f, 650.f), FVector2D(650.f, 0.f), FVector2D(0.f, -650.f),
-				FVector2D(-650.f, 0.f), FVector2D(325.f, -325.f), FVector2D(-325.f, 325.f),
-			};
-
-			FActorSpawnParameters VillagerParams;
-			VillagerParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-			VillagerParams.Owner = this;
-
-			const int32 Count = FMath::Min(VillagerCount, 6);
-			for (int32 i = 0; i < Count; ++i)
-			{
-				const FVector VillagerLoc = Center + FVector(VillagerPosts[i].X, VillagerPosts[i].Y, 92.f);
-				AVillager* Villager = GetWorld()->SpawnActor<AVillager>(
-					VillagerClass, VillagerLoc, FRotator::ZeroRotator, VillagerParams);
-				if (!Villager)
-				{
-					continue;
-				}
-
-				// 배회 중심은 스폰 지점이 아니라 마을 중심 — 주민들이 마을 전체를 고루 돌아다닌다
-				Villager->HomeLocation = Center;
+		Guard->Leader = nullptr;        // 아무도 안 따라간다
+		Guard->bGuardHome = true;       // 대신 자기 자리를 지킨다
+		Guard->HomeLocation = GuardLoc;
 #if WITH_EDITOR
-				Villager->SetFolderPath(TEXT("Spawned/Map"));
+		Guard->SetFolderPath(TEXT("Spawned/Map"));
 #endif
-				Chunk.SpawnedActors.Add(Villager);
-			}
+		Chunk.SpawnedActors.Add(Guard); // 청크와 함께 언로드/재생성
+	}
+}
+
+// 주민(비전투): 발판과 겹치지 않는 고정 자리에서 시작해 마을 중심 주변을 배회.
+// 스폰 위치는 고정이지만 이후엔 각자 알아서 돌아다녀서 마을이 살아 보인다.
+void AInfiniteMapGenerator::SpawnVillagers(const FVector& Center, FMapChunk& Chunk)
+{
+	if (!VillagerClass || VillagerCount <= 0)
+	{
+		return;
+	}
+
+	static const FVector2D VillagerPosts[6] = {
+		FVector2D(0.f, 650.f), FVector2D(650.f, 0.f), FVector2D(0.f, -650.f),
+		FVector2D(-650.f, 0.f), FVector2D(325.f, -325.f), FVector2D(-325.f, 325.f),
+	};
+
+	FActorSpawnParameters VillagerParams;
+	VillagerParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	VillagerParams.Owner = this;
+
+	const int32 Count = FMath::Min(VillagerCount, 6);
+	for (int32 i = 0; i < Count; ++i)
+	{
+		const FVector VillagerLoc = Center + FVector(VillagerPosts[i].X, VillagerPosts[i].Y, 92.f);
+		AVillager* Villager = GetWorld()->SpawnActor<AVillager>(
+			VillagerClass, VillagerLoc, FRotator::ZeroRotator, VillagerParams);
+		if (!Villager)
+		{
+			continue;
 		}
+
+		// 배회 중심은 스폰 지점이 아니라 마을 중심 — 주민들이 마을 전체를 고루 돌아다닌다
+		Villager->HomeLocation = Center;
+#if WITH_EDITOR
+		Villager->SetFolderPath(TEXT("Spawned/Map"));
+#endif
+		Chunk.SpawnedActors.Add(Villager);
 	}
 }
 

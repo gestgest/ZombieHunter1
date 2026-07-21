@@ -228,12 +228,6 @@ protected:
 
 
 
-
-
-
-
-
-
 private:
 	/** 현재 로드된 청크들 (좌표 → 스폰 액터들) */
 	UPROPERTY()
@@ -253,11 +247,20 @@ private:
 	/** NavMeshBoundsVolume를 플레이어 위치로 옮기고 내비 시스템에 갱신을 통지 */
 	void UpdateNavBoundsToPlayer();
 
+
+
+
+
 	FIntPoint WorldToChunk(const FVector& WorldLocation) const;
 	void UpdateChunks(const FIntPoint& Center);
 	void GenerateChunk(const FIntPoint& Coord);
 	void SpawnObstacles(FRandomStream& Stream, FMapChunk& Chunk, FVector Origin, bool bIsPOIChunk);
 	void UnloadChunk(const FIntPoint& Coord);
+
+
+
+
+
 
 	/** 청크 좌표 → 소속 리전 좌표 (음수 좌표도 올바르게 내림 나눗셈) */
 	FIntPoint ChunkToRegion(const FIntPoint& ChunkCoord) const;
@@ -279,6 +282,12 @@ private:
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void SetupVillege(bool bIsPOIChunk, FPOIInfo& POI, const FVector Center, FMapChunk& Chunk);
+
+	/** 경비병: 발판 주변 고정 자리(대각선 네 모서리)에 경비 모드로 스폰 */
+	void SpawnVillageGuards(const FVector& Center, FMapChunk& Chunk);
+
+	/** 주민(비전투): 발판과 안 겹치는 고정 자리에서 시작해 마을 중심 주변을 배회 */
+	void SpawnVillagers(const FVector& Center, FMapChunk& Chunk);
 
 	/** 발판 상태가 기본값과 다르면 GameInstance에 저장 (UnloadChunk와 EndPlay 두 출구에서 호출).
 	 *  기본값 그대로면 저장 스킵 — 시드가 재생성하는 값은 기억할 필요 없다(delta만 저장). */
