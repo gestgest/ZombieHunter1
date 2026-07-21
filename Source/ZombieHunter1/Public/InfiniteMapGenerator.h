@@ -256,6 +256,7 @@ private:
 	FIntPoint WorldToChunk(const FVector& WorldLocation) const;
 	void UpdateChunks(const FIntPoint& Center);
 	void GenerateChunk(const FIntPoint& Coord);
+	void SpawnObstacles(FRandomStream& Stream, FMapChunk& Chunk, FVector Origin, bool bIsPOIChunk);
 	void UnloadChunk(const FIntPoint& Coord);
 
 	/** 청크 좌표 → 소속 리전 좌표 (음수 좌표도 올바르게 내림 나눗셈) */

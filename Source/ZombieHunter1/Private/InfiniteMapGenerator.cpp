@@ -23,26 +23,6 @@ AInfiniteMapGenerator::AInfiniteMapGenerator()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
 
-	// 기본 메시 자동 지정 (엔진 기본 도형은 항상 존재하고 한 변이 정확히 100cm).
-	// 바닥을 생성하고 나서 위의 오브젝트들
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
-	if (CubeFinder.Succeeded())
-	{
-		FloorMesh = CubeFinder.Object;
-		ObstacleMeshes.Add(CubeFinder.Object);
-	}
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
-	if (CylinderFinder.Succeeded())
-	{
-		ObstacleMeshes.Add(CylinderFinder.Object);
-	}
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> ConeFinder(TEXT("/Engine/BasicShapes/Cone.Cone"));
-	if (ConeFinder.Succeeded())
-	{
-		ObstacleMeshes.Add(ConeFinder.Object);
-	}
-
-
 	// 바닥 머티리얼(있으면): 프로젝트의 프로토타입 그리드
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GridMatFinder(TEXT("/Game/LevelPrototyping/Materials/MI_PrototypeGrid_Gray.MI_PrototypeGrid_Gray"));
 	if (GridMatFinder.Succeeded())
@@ -296,7 +276,7 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 			FloorMat = POIMat;
 		}
 	}
-
+	
 	if (FloorMesh) //바닥 깔기 : 마을 실질적으로 까는 건 이때쯤
 	{
 		const float Base = FMath::Max(1.f, FloorMeshBaseSize);
@@ -327,7 +307,14 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 			bVillage ? TEXT("Village") : TEXT("ZombieVillage"), Coord.X, Coord.Y, FootprintSize, FootprintSize);
 	}
 
-	// 장애물: 청크 안에 랜덤 배치 — POI 청크는 비워둔다 (마을 콘텐츠 자리)
+	SpawnObstacles(Stream, Chunk, Origin, bIsPOIChunk);
+
+	LoadedChunks.Add(Coord, MoveTemp(Chunk));
+}
+
+// 장애물 생성 : 청크 안에 랜덤 배치 — POI 청크는 비워둔다 (마을 콘텐츠 자리)
+void AInfiniteMapGenerator::SpawnObstacles(FRandomStream & Stream, FMapChunk & Chunk, FVector Origin, bool bIsPOIChunk)
+{
 	if (!bIsPOIChunk && ObstacleMeshes.Num() > 0)
 	{
 		const int32 Count = Stream.RandRange(MinObstaclesPerChunk, FMath::Max(MinObstaclesPerChunk, MaxObstaclesPerChunk));
@@ -345,8 +332,8 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 			const float Yaw = Stream.FRandRange(0.f, 360.f);
 
 			// 중심 피벗 메시를 바닥 위에 앉히기 위한 Z 오프셋
-			const float HalfHeight = (ObstacleMeshBaseSize * Scale) * 0.5f;
-			const FVector Loc = Origin + FVector(LocalX, LocalY, HalfHeight);
+			//const float HalfHeight = (ObstacleMeshBaseSize * Scale) * 0.5f;
+			const FVector Loc = Origin + FVector(LocalX, LocalY, 0);
 
 			if (AStaticMeshActor* Obstacle = SpawnMeshActor(Mesh, Loc, FRotator(0.f, Yaw, 0.f), FVector(Scale), nullptr))
 			{
@@ -354,10 +341,7 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 			}
 		}
 	}
-
-	LoadedChunks.Add(Coord, MoveTemp(Chunk));
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //POI chunk

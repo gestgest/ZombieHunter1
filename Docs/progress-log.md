@@ -8,6 +8,17 @@
 
 ## 🚧 지금 하던 것
 
+### Necropolis 애셋을 실제 바닥/장애물로 교체 + 사수모드 디버깅 3건 (2026-07-21)
+- Necropolis(디아블로풍 폐허/묘지 마켓플레이스 팩)를 절차적 맵의 실제 바닥/장애물 애셋으로 붙이는 중
+- `.gitignore`의 `Content/Necropolis/*` 판단은 확인 완료(2.2GB, 마켓플레이스 팩이라 gitignore 맞음) — 더 볼 필요 없음
+- 바닥 재질 후보: `MI_floor_tiles_01`(크립트용, 어두움) 복제해서 `Landscape/Textures/T_rocky_moss_floor_*`로 텍스처 교체 → 어두운 톤 유지하면서 실외 느낌 내는 방향으로 진행 중
+- `Content/StarterContent`(585MB) 전체 삭제 검토 중 — `Content/Sound/MS_Attack.uasset`이 `StarterContent/Audio/Explosion02`를 참조하고 있어서, 그 사운드만 딴 걸로 교체하고 나서 폴더 통째로 지우면 됨
+- **사수모드로 자가진단 중인 버그 3건** (Claude가 원인 조사 후 메모리에 정답 기록해둠 — 사용자가 힌트 받으면서 직접 찾는 중, 아직 다 안 풀림):
+  1. `ObstacleMeshes`에 Necropolis 나무(Foliage 원본 메시)를 넣으니 공중에 뜸 → `InfiniteMapGenerator.cpp:328` 근처 `HalfHeight` Z오프셋 계산 확인 중
+  2. 마을 파란 바닥(`VillageFloorMaterial`) 범위가 POI 디버그 박스(`DrawDebugBox`, `InfiniteMapGenerator.cpp:298~308`)보다 오른쪽/뒤로 밀려 보임 → `FloorMesh` 배치 좌표와 메시 피벗 위치 비교 중
+  3. `Docs/test.png`: 절차적 바닥이 자연스럽게 안 이어지고 청크 단위 사각형 경계로 뚜렷하게 보임 → `SpawnMeshActor`의 Mobility 설정, 바닥이 청크마다 분리된 개별 액터라는 구조 쪽에서 원인 확인 중
+- 다음 세션에서 이어갈 것: 위 3건 힌트 이어받아서 원인 스스로 확정 → 수정은 에디터/코드에서 직접
+
 ### POI 스켈레톤 (2026-07-07) — C++ 완료, 빌드+인게임 확인 대기
 - `AInfiniteMapGenerator`에 리전 기반 POI(마을/좀비마을) 배치 로직 추가 (`Docs/poi-event-design.md` 기획의 1단계)
 - 확인 방법: 빌드 → 플레이 → 걸어다니면 **파란 바닥 청크 = 마을, 어두운 바닥 = 좀비마을** (장애물 없음, 초록/빨강 디버그 박스 + `[POI]` 로그)

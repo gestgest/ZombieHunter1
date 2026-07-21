@@ -33,7 +33,7 @@ void AZombieSlayerGameMode::StartPlay()
         true                         // 반복 여부 (true = 반복)
     );
 
-    // 리쉬 검사: 뒤처져 지형을 잃(을 뻔하)는 적을 주기적으로 회수
+    // 리쉬 검사: 뒤처져 지형을 잃는 적을 주기적으로 회수
     GetWorldTimerManager().SetTimer(
         LeashTimerHandle,
         this,
