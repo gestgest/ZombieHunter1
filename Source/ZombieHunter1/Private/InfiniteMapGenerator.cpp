@@ -98,6 +98,8 @@ void AInfiniteMapGenerator::BeginPlay()
 	}
 }
 
+
+
 void AInfiniteMapGenerator::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -305,7 +307,7 @@ void AInfiniteMapGenerator::GenerateChunk(const FIntPoint& Coord)
 			bVillage ? TEXT("Village") : TEXT("ZombieVillage"), Coord.X, Coord.Y, FootprintSize, FootprintSize);
 	}
 
-	SpawnObstacles(Stream, Chunk, Origin, bIsPOIChunk); //장애물설치
+	SpawnObstacles(Stream, Chunk, Origin, bIsPOIChunk);
 
 	LoadedChunks.Add(Coord, MoveTemp(Chunk));
 }
