@@ -13,6 +13,7 @@ class APawn;
 class ANavMeshBoundsVolume;
 class ACompanion;
 class AVillager;
+class UInstancedStaticMeshComponent;
 
 /** 한 청크가 스폰한 액터 묶음 (언로드 시 한 번에 Destroy) */
 USTRUCT()
@@ -22,6 +23,14 @@ struct FMapChunk
 
 	UPROPERTY()
 	TArray<TObjectPtr<AActor>> SpawnedActors;
+
+	/** 이 청크의 바닥이 들어간 ISM 컴포넌트(Default/Village/ZombieVillage 중 하나)와 그 안에서의 인스턴스 인덱스.
+	 *  바닥은 더 이상 개별 액터가 아니라 ISM 인스턴스라서 언로드 시 RemoveInstance로 제거해야 한다. */
+	UPROPERTY()
+	TObjectPtr<UInstancedStaticMeshComponent> FloorISMComp = nullptr;
+
+	UPROPERTY()
+	int32 FloorInstanceIndex = INDEX_NONE;
 };
 
 /** POI(특수 지역) 종류 */
@@ -125,6 +134,18 @@ protected:
 	/** 바닥 두께(cm). 윗면이 Z=0에 오도록 배치됨 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map|Floor")
 	float FloorThickness = 20.f;
+
+	/** 일반 바닥용 ISM. 청크마다 개별 액터로 스폰하지 않고 인스턴스로 모아서 Lumen 경계(청크 이음새)를 없앤다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Floor")
+	TObjectPtr<UInstancedStaticMeshComponent> FloorISM;
+
+	/** 마을 바닥용 ISM (VillageFloorMaterial 적용) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Floor")
+	TObjectPtr<UInstancedStaticMeshComponent> VillageFloorISM;
+
+	/** 좀비마을 바닥용 ISM (ZombieVillageFloorMaterial 적용) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Floor")
+	TObjectPtr<UInstancedStaticMeshComponent> ZombieVillageFloorISM;
 
 
 
@@ -273,6 +294,9 @@ private:
 
 	AStaticMeshActor* SpawnMeshActor(UStaticMesh* Mesh, const FVector& Location,
 		const FRotator& Rotation, const FVector& Scale, UMaterialInterface* OverrideMat);
+
+	/** POI 종류에 맞는 바닥 ISM 컴포넌트를 고른다 (일반/마을/좀비마을) */
+	UInstancedStaticMeshComponent* GetFloorISMFor(bool bIsPOIChunk, const FPOIInfo& POI) const;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	/// Villege

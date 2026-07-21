@@ -14,9 +14,7 @@
 - 바닥 재질 후보: `MI_floor_tiles_01`(크립트용, 어두움) 복제해서 `Landscape/Textures/T_rocky_moss_floor_*`로 텍스처 교체 → 어두운 톤 유지하면서 실외 느낌 내는 방향으로 진행 중
 - `Content/StarterContent`(585MB) 전체 삭제 검토 중 — `Content/Sound/MS_Attack.uasset`이 `StarterContent/Audio/Explosion02`를 참조하고 있어서, 그 사운드만 딴 걸로 교체하고 나서 폴더 통째로 지우면 됨
 - **사수모드로 자가진단 중인 버그 3건** (Claude가 원인 조사 후 메모리에 정답 기록해둠 — 사용자가 힌트 받으면서 직접 찾는 중, 아직 다 안 풀림):
-  1. `ObstacleMeshes`에 Necropolis 나무(Foliage 원본 메시)를 넣으니 공중에 뜸 → `InfiniteMapGenerator.cpp:328` 근처 `HalfHeight` Z오프셋 계산 확인 중
-  2. 마을 파란 바닥(`VillageFloorMaterial`) 범위가 POI 디버그 박스(`DrawDebugBox`, `InfiniteMapGenerator.cpp:298~308`)보다 오른쪽/뒤로 밀려 보임 → `FloorMesh` 배치 좌표와 메시 피벗 위치 비교 중
-  3. `Docs/test.png`: 절차적 바닥이 자연스럽게 안 이어지고 청크 단위 사각형 경계로 뚜렷하게 보임 → `SpawnMeshActor`의 Mobility 설정, 바닥이 청크마다 분리된 개별 액터라는 구조 쪽에서 원인 확인 중
+  1. `Docs/test.png`: 절차적 바닥이 자연스럽게 안 이어지고 청크 단위 사각형 경계로 뚜렷하게 보임 → `SpawnMeshActor`의 Mobility 설정, 바닥이 청크마다 분리된 개별 액터라는 구조 쪽에서 원인 확인 중
 - 다음 세션에서 이어갈 것: 위 3건 힌트 이어받아서 원인 스스로 확정 → 수정은 에디터/코드에서 직접
 
 ### POI 스켈레톤 (2026-07-07) — C++ 완료, 빌드+인게임 확인 대기
